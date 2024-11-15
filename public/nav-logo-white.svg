@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 193 100.7">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: #29abe2;
+      }
+    </style>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.1, SVG Export Plug-In . SVG Version: 1.2.0 Build 142)  -->
+  <g>
+    <g id="Layer_1">
+      <g id="BLUE_NAV_LOGO">
+        <g>
+          <g>
+            <path class="cls-1" d="M102.5,92h-.1l-21.6-36.7h-12.6v2.4c4.3,0,5,.6,5,6.2v36.8h4.3v-38.4h.1l22.6,38.4h6.6v-45.5h-4.3v36.7h0Z"/>
+            <path class="cls-1" d="M124.5,55.2v2.4c2.2,0,3.7,0,3.7,2.3s-.8,2.8-1.2,4l-13.6,36.8h4.2l5.1-14.1h17.5l5.1,14.1h7.1l-16.7-45.5h-11.3,0ZM124,83.5l7.3-19.7,7.8,19.7h-15.1Z"/>
+            <path class="cls-1" d="M188.5,55.2l-13.1,37h-.1l-13.4-37h-11.3v2.5c3.7.1,4.4.9,6.3,6.2l13.4,36.8h6l16.7-45.5h-4.5Z"/>
+            <path class="cls-1" d="M80.9.3h-42.5v38.4H0v42.5h42.5v-38.4h38.4V.3ZM38.4,77.1H4.1v-34.3h34.3v34.3ZM76.9,38.7h-34.3V4.4h34.3v34.3Z"/>
+          </g>
+          <path class="cls-2" d="M19.4,58v42.5h42.5v-42.5H19.4ZM23.5,62.1h34.3v34.3H23.5v-34.3Z"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
