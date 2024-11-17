@@ -1,6 +1,6 @@
 import axios from "axios";
 import { YoutubeTranscript } from "youtube-transcript";
-import { strict_output } from "./gpt";
+import { strict_output } from "./courseGenerator";
 
 export async function searchYoutube(searchQuery: string) {
   // hello world => hello+world

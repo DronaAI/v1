@@ -3,7 +3,7 @@
 import { getAuthSession } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createChaptersSchema } from "@/validators/course"
-import { generateChapters } from "@/lib/gpt"
+import { generateChapters } from "@/lib/courseGenerator"
 
 export async function createCourse(data: {
   title: string

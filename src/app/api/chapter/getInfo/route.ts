@@ -1,7 +1,7 @@
 // /api/chapter/getInto
 
 import { prisma } from "@/lib/db";
-import { strict_output } from "@/lib/gpt";
+import { strict_output } from "@/lib/courseGenerator";
 import {
   getQuestionsFromTranscript,
   getTranscript,
