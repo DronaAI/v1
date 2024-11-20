@@ -29,10 +29,10 @@ export interface QuizResults {
 }
 
 
-type outputUnits = {
+export type outputUnits = {
     title: string;
     chapters: {
       youtube_search_query: string;
       chapter_title: string;
     }[];
-  }[];
+  }[]

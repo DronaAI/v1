@@ -1,21 +1,46 @@
-import { CourseGenerationprompt } from "../prompts/CourseGeneration.prompt";
-import { ChatVertexAI } from "@langchain/google-vertexai"
-import { JsonOutputParser } from "@langchain/core/output_parsers";
-import {outputUnits} from "@/types";
+import { createVertex } from '@ai-sdk/google-vertex';
+import { generateObject } from 'ai';
+import { z } from 'zod';
+import { createOpenAI } from '@ai-sdk/openai';
 
 
-const chatVertexAI = new ChatVertexAI({
-  model: "gemini-1.5-pro", 
-  temperature: 0.7,
-});
 
-export async function generate_course(
-  courseName: string, units: number
-) {
-  const courseCreationparser = new JsonOutputParser<outputUnits>();
-        const chain = CourseGenerationprompt.pipe(chatVertexAI).pipe(courseCreationparser);
+const openai = createOpenAI({
+    // custom settings, e.g.
+    apiKey  : process.env.OPENAI_API_KEY,
+    compatibility: 'strict', // strict mode, enable when using the OpenAI API
+  });
 
-        const course = await chain.invoke({ topic: courseName, units: units });
 
-        return course;
+  const model = openai('gpt-4o');
+
+
+
+export async function createCourse(topic: string, units: number) {
+    const result = await generateObject({
+        model: model,
+        schema: z.object({
+            outputUnits  : (z.array(z.object({
+                title: z.string(),
+                chapters: z.array(z.object({
+                    youtube_search_query: z.string(),
+                    chapter_title: z.string()
+                }))
+            }))),
+        }),
+    
+        system: `You are an expert course creator. Create a detailed course structure for the given topic.
+        The course should be comprehensive and well-structured, with clear units  .
+        Each unit should be divided into multiple chapter and each chapter should have an appropriate youtube search query such that the exact chapter can be found `,
+
+        prompt: `Create a course structure for: ${topic} with ${units} units.`
+    })
+
+
+    return result.object
 }
+
+
+
+
+

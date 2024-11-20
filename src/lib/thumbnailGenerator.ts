@@ -1,22 +1,36 @@
-import { CourseGenerationprompt } from "../prompts/CourseGeneration.prompt";
-import { ChatVertexAI } from "@langchain/google-vertexai"
-import { JsonOutputParser } from "@langchain/core/output_parsers";
-import {outputUnits} from "@/types";
-import { ThumbnailGenerationPrompt } from "@/prompts/ThumbnailGeneration.prompt";
+import { createVertex } from '@ai-sdk/google-vertex';
+import { generateObject } from 'ai';
+import { z } from 'zod';
+import { createOpenAI } from '@ai-sdk/openai';
 
+    
 
-const chatVertexAI = new ChatVertexAI({
-  model: "gemini-1.5-pro", 
-  temperature: 0.7,
+const openai = createOpenAI({
+  // custom settings, e.g.
+  apiKey  : process.env.OPENAI_API_KEY,
+  compatibility: 'strict', // strict mode, enable when using the OpenAI API
 });
 
-export async function generate_thumbnail(
-  courseName: string
-) {
+
+const model = openai('gpt-4o');
+
+
+export async  function createThumbnail(topic: string) {
+  const result = await generateObject({
+    model : model , 
+    schema : z.object({
+      image_search_term: z.string()
+    }),
+    system : "You are capable of generating the most relevant search keyword for a course thumbnail. Provide a search term that will be used to find a relevant image on unsplash.",
   
-        const chain = ThumbnailGenerationPrompt.pipe(chatVertexAI).pipe(new JsonOutputParser<{image_search_term: string}>());
+    prompt : `Create a thumbnail for : ${topic}`
+  })
 
-        const course = await chain.invoke({ topic: courseName });
 
-        return course;
+  return result.object
 }
+
+
+
+
+

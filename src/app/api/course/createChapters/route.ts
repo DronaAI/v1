@@ -3,13 +3,13 @@
 import { NextResponse } from "next/server";
 import { createChaptersSchema } from "@/validators/course";
 import { ZodError } from "zod";
-import { generate_course } from "@/lib/courseGenerator";
+import { strict_output } from "@/lib/gpt";
 import { getUnsplashImage } from "@/lib/unsplash";
 import { prisma } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
 import { checkSubscription } from "@/lib/subscription";
-import { outputUnits } from "@/types";
-import { generate_thumbnail } from "@/lib/thumbnailGenerator";
+import { createThumbnail } from "@/lib/thumbnailGenerator";
+import { createCourse } from "@/lib/courseGenerator";
 
 export async function POST(req: Request, res: Response) {
   try {
@@ -23,14 +23,14 @@ export async function POST(req: Request, res: Response) {
     }
     const body = await req.json();
     const { title, units } = createChaptersSchema.parse(body);
+
     
+    let result = await createCourse(title , units.length) ;
 
-    let output_units: outputUnits = await generate_course(title , units.length);
-
-    const imageSearchTerm = await generate_thumbnail(title);
+    const imageSearchTerm = createThumbnail(title)
 
     const course_image = await getUnsplashImage(
-      imageSearchTerm.image_search_term
+      (await imageSearchTerm).image_search_term
     );
     const course = await prisma.course.create({
       data: {
@@ -39,7 +39,7 @@ export async function POST(req: Request, res: Response) {
       },
     });
 
-    for (const unit of output_units) {
+    for (const unit of result.outputUnits) {
       const title = unit.title;
       const prismaUnit = await prisma.unit.create({
         data: {
