@@ -28,11 +28,50 @@ export function QuizCards({ chapter }: QuizCardsProps) {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }))
   }
 
-  const checkAnswers = () => {
+
+  const createQuizReport = () => {
+    const correctAnswers = Object.keys(questionState).filter(
+      (questionId) => questionState[questionId] === true
+    ).length
+
+    const incorrectAnswers = Object.keys(questionState).filter(
+      (questionId) => questionState[questionId] === false
+    )
+    const totalQuestions = chapter.questions.length
+    const score = (correctAnswers / totalQuestions) * 100
+    const report =  {
+      lessonName: chapter.name,
+      score,
+      incorrectAnswers
+    }
+    return report 
+  }
+
+  const checkAnswers = async () => {
     const newQuestionState: Record<string, boolean> = {}
     chapter.questions.forEach((question) => {
       newQuestionState[question.id] = answers[question.id] === question.answer
     })
+    const report = createQuizReport()
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(report),
+      })
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      const data = await response.json()
+      console.log('Report sent successfully:', data)
+    } catch (error) {
+      console.error('Error sending report:', error)
+    }
+    
+    console.log(report)
     setQuestionState(newQuestionState)
   }
 

@@ -12,9 +12,7 @@ const openai = createOpenAI({
   });
 
 
-  const model = openai('gpt-4o');
-
-
+const model = openai('gpt-4o');
 
 export async function generateSummary(transcript : string) {
     const result = await generateObject({
