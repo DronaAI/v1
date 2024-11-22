@@ -22,10 +22,10 @@ export async function POST(req: Request, res: Response) {
       return new NextResponse("no credits", { status: 402 });
     }
     const body = await req.json();
-    const { title, units } = createChaptersSchema.parse(body);
+    const { title } = createChaptersSchema.parse(body);
 
     
-    let result = await createCourse(title , units.length) ;
+    let result = await createCourse(title) ;
 
     const imageSearchTerm = createThumbnail(title)
 

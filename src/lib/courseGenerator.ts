@@ -16,7 +16,7 @@ const openai = createOpenAI({
 
 
 
-export async function createCourse(topic: string, units: number) {
+export async function createCourse(topic: string) {
     const result = await generateObject({
         model: model,
         schema: z.object({
@@ -29,13 +29,24 @@ export async function createCourse(topic: string, units: number) {
             }))),
         }),
     
-        system: `You are an expert course creator. Create a detailed course structure for the given topic.
-        The course should be comprehensive and well-structured, with clear units  .
-        Each unit should be divided into multiple chapter and each chapter should have an appropriate youtube search query such that the exact chapter can be found `,
+        system: `You are an expert course creator. Create a detailed course structure for the given topic , Each unit should be divided into multiple chapters 
+        and each chapter should have a youtube search query such that for the chapter most relevant content can be found on youtube ensure the quality of content 
+        to be high such that user can learn most about the topic you can adjust the number of units in a course as per the requirement just try to keep them under 7 
+        units`,
 
-        prompt: `Create a course structure for: ${topic} with ${units} units.`
+        prompt: `Create a course structure for: ${topic}.`
     })
 
+
+    
+
+    result.object.outputUnits.map( (unit ) => { 
+        console.log(unit.title)
+        unit.chapters.map( (chapter) => { 
+            console.log(chapter.youtube_search_query)
+        } )
+    }
+     )
 
     return result.object
 }
