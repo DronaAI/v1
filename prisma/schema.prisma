@@ -1,4 +1,4 @@
-generator client {
+generator client { 
   provider = "prisma-client-js"
 }
 
@@ -44,12 +44,11 @@ model User {
   emailVerified DateTime?
   image         String?
   credits       Int       @default(10)
-
-  accounts Account[]
-  sessions Session[]
+  accounts      Account[]
+  sessions      Session[]
+  quizResults   QuizResult[]
 }
 
-// course contains many units
 model Course {
   id    String @id @default(cuid())
   name  String
@@ -57,11 +56,9 @@ model Course {
   units Unit[]
 }
 
-// unit contains many chapters
 model Unit {
   id       String @id @default(cuid())
   courseId String
-
   name     String
   course   Course    @relation(fields: [courseId], references: [id])
   chapters Chapter[]
@@ -70,27 +67,26 @@ model Unit {
 }
 
 model Chapter {
-  id     String @id @default(cuid())
-  unitId String
-
+  id                 String     @id @default(cuid())
+  unitId             String
   name               String
   youtubeSearchQuery String
   videoId            String?
   summary            String?    @db.VarChar(3000)
   unit               Unit       @relation(fields: [unitId], references: [id])
   questions          Question[]
+  quizResults        QuizResult[]
 
   @@index([unitId], name: "unitId")
 }
 
 model Question {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   chapterId String
-
-  question String  @db.VarChar(3000)
-  answer   String  @db.VarChar(3000)
-  options  String  @db.VarChar(3000)
-  chapter  Chapter @relation(fields: [chapterId], references: [id])
+  question  String   @db.VarChar(3000)
+  answer    String   @db.VarChar(3000)
+  options   String   @db.VarChar(3000)
+  chapter   Chapter  @relation(fields: [chapterId], references: [id])
 
   @@index([chapterId], name: "chapterId")
 }
@@ -102,4 +98,19 @@ model UserSubscription {
   stripeSubscriptionId   String?   @unique @map(name: "stripe_subscription_id")
   stripePriceId          String?   @map(name: "stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
+}
+
+model QuizResult {
+  id          String   @id @default(cuid())
+  userId      String
+  chapterId   String
+  score       Int      @default(0)
+  completedAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId])
+  @@index([userId], name: "userId")
+  @@index([chapterId], name: "chapterId")
 }

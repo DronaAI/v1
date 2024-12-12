@@ -4,10 +4,9 @@ import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { Github, MessageCircle } from "lucide-react";
+import { Github, MessageCircle } from 'lucide-react';
 import SignInButton from "./SignInButton";
 import UserAccountNav from "./UserAccountNav";
-import logo from "../../public/logo.svg";
 import { Session } from "next-auth";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +14,7 @@ type Props = {
   session: Session | null;
 };
 
-export default function Component({ session }: Props = { session: null }) {
+const Navbar = ({ session }: Props) => {
   const navItems = [
     { name: "Gallery", href: "/gallery" },
     { name: "Create Course", href: "/create" },
@@ -26,7 +25,7 @@ export default function Component({ session }: Props = { session: null }) {
   return (
     <>
       <div className="w-full flex justify-center fixed top-0 left-0 right-0 z-50 px-4">
-        <nav className="flex items-center justify-center w-full max-w-5xl px-6 py-2 mt-4 mb-8 bg-opacity-20 bg-cyan-900 backdrop-filter backdrop-blur-lg rounded-full shadow-lg">
+        <nav className="flex items-center justify-between w-full max-w-6xl px-6 py-3 mt-4 mb-8 bg-gradient-to-r from-purple-500/10 to-blue-500/10 backdrop-filter backdrop-blur-lg rounded-full shadow-lg">
           <div className="flex items-center space-x-6">
             <Link href="/">
               <motion.div
@@ -35,7 +34,7 @@ export default function Component({ session }: Props = { session: null }) {
                 className="flex-shrink-0"
               >
                 <Image
-                  src={logo}
+                  src="/logo.svg"
                   alt="Drona.AI Logo"
                   width={48}
                   height={48}
@@ -46,56 +45,40 @@ export default function Component({ session }: Props = { session: null }) {
 
             <div className="hidden md:flex space-x-6">
               {navItems.map(({ name, href }) => (
-                <motion.a
-                  key={name}
-                  href={href}
-                  className="text-sm text-cyan-100 hover:text-white transition-colors duration-300"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {name}
-                </motion.a>
+                <motion.div key={name} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link href={href} className="text-sm text-gray-300 hover:text-white transition-colors duration-300">
+                    {name}
+                  </Link>
+                </motion.div>
               ))}
             </div>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative"
-            >
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               {session?.user ? (
                 <UserAccountNav user={session.user} />
               ) : (
                 <SignInButton />
               )}
             </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative"
-            >
+
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
                 href="https://github.com/AnonO6/DronaAI"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Github className="w-6 h-6 text-cyan-100 hover:text-white transition-colors duration-300" />
+                <Github className="w-6 h-6 text-gray-300 hover:text-white transition-colors duration-300" />
               </Link>
             </motion.div>
 
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative"
-            >
-              <Link
-                href="https://hume-evi-next-js-starter-tau.vercel.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link href="https://hume-evi-next-js-starter-tau.vercel.app/">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-cyan-100 hover:text-white border-cyan-100 hover:border-white transition-colors duration-300"
+                  className="text-gray-300 hover:text-white border-gray-300 hover:border-white bg-white/5 hover:bg-white/10 transition-all duration-300"
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Ask Drona
@@ -105,7 +88,10 @@ export default function Component({ session }: Props = { session: null }) {
           </div>
         </nav>
       </div>
-      <div className="h-24"></div>{" "}
+      <div className="h-24"></div>
     </>
   );
-}
+};
+
+export default Navbar;
+
