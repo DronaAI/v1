@@ -29,6 +29,8 @@ type QuizModalProps = {
     }[]
   }
   unit: Unit
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 const fadeInUp = {
@@ -38,11 +40,10 @@ const fadeInUp = {
   transition: { duration: 0.3 }
 }
 
-export function QuizModal({ chapter, unit }: QuizModalProps) {
+export function QuizModal({ chapter, unit, open, onOpenChange }: QuizModalProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [questionState, setQuestionState] = useState<Record<string, boolean | null>>({})
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [isOpen, setIsOpen] = useState(false)
   const [quizCompleted, setQuizCompleted] = useState(false)
   const [score, setScore] = useState(0)
   const [isSendingReport, setIsSendingReport] = useState(false)
@@ -146,10 +147,10 @@ export function QuizModal({ chapter, unit }: QuizModalProps) {
   }
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!open) {
       resetQuiz()
     }
-  }, [isOpen])
+  }, [open])
 
   const ScoreCard = () => (
     <motion.div
@@ -227,12 +228,7 @@ export function QuizModal({ chapter, unit }: QuizModalProps) {
   )
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white">
-          Attempt Quiz
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         "sm:max-w-xl bg-gray-900/95 border-gray-800 backdrop-blur-xl p-6",
         { "sm:max-w-3xl": showResults }

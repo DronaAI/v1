@@ -52,14 +52,7 @@ export function MainVideoSummary({
           )}
         </Button>
       </div>
-      <Card className="mt-8 bg-gray-800 bg-opacity-50 backdrop-blur-lg border-none">
-        <CardHeader>
-          <CardTitle className="text-blue-300">Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-300">{chapter.summary}</p>
-        </CardContent>
-      </Card>
+     
     </motion.div>
   )
 }
