@@ -37,7 +37,7 @@ export default function Home() {
   }, [controls])
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white overflow-hidden font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-[#0A0A1B] via-[#1F0B44] to-[#421E6D] text-white overflow-hidden font-sans">
       <CheckeredBackground>
         <main className="container mx-auto px-4 relative z-10">
           <motion.section
@@ -68,17 +68,17 @@ export default function Home() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.8 }}
-                className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-blue-500/30 blur-[100px] -z-10"
+                className="absolute inset-0 bg-gradient-to-r from-purple-600/30 to-purple-800/30 blur-[120px] -z-10"
               />
               <motion.h1
                 variants={fadeInUp}
-                className="text-6xl md:text-8xl font-extrabold mb-6 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200"
+                className="text-6xl md:text-8xl font-extrabold mb-6 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-200"
               >
                 Unlock your Potential
                 <br />
                 with{' '}
                 <span className="relative inline-block">
-                  <span className="relative z-10 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Drona.AI</span>
+                  <span className="relative z-10 bg-gradient-to-r from-purple-400 to-purple-300 bg-clip-text text-transparent">Drona.AI</span>
                   <motion.span
                     initial={{ width: 0 }}
                     animate={{ width: "100%" }}
@@ -103,7 +103,7 @@ export default function Home() {
               <Link href="/gallery" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 w-full"
+                  className="bg-gradient-to-r from-purple-600 to-purple-800 text-white hover:from-purple-700 hover:to-purple-900 transition-all duration-300 transform hover:scale-105 w-full"
                 >
                   <Sparkles className="mr-2 h-4 w-4" /> Get started
                 </Button>
@@ -172,7 +172,7 @@ export default function Home() {
                       <h3 className="text-xl font-semibold mb-3 text-white">{feature.title}</h3>
                       <p className="text-gray-300 mb-4 text-base">{feature.description}</p>
                       <p className="text-sm text-gray-400 mt-auto">{feature.subtext}</p>
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-purple-800/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -182,7 +182,7 @@ export default function Home() {
 
           <section className="py-20">
             <motion.div 
-              className="relative rounded-3xl bg-gradient-to-r from-blue-500 to-purple-500 p-12 md:p-16 text-center overflow-hidden"
+              className="relative rounded-3xl bg-gradient-to-r from-purple-600 to-purple-800 p-12 md:p-16 text-center overflow-hidden"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}

@@ -1,54 +1,68 @@
-import { Chapter, Course, Unit } from "@prisma/client";
-import Image from "next/image";
-import Link from "next/link";
-import React from "react";
-import { motion } from "framer-motion";
+'use client'
+
+import { Course, Unit, Chapter } from "@prisma/client"
+import { motion } from "framer-motion"
+import Link from "next/link"
+
+type CourseWithUnitsAndChapters = Course & {
+  units: (Unit & {
+    chapters: Chapter[]
+  })[]
+}
 
 type Props = {
-  course: Course & {
-    units: (Unit & {
-      chapters: Chapter[];
-    })[];
-  };
-};
+  course: CourseWithUnitsAndChapters
+}
 
 const GalleryCourseCard = ({ course }: Props) => {
   return (
-    <motion.div
-      whileHover={{ scale: 1.05, boxShadow: "0 10px 20px rgba(0,0,0,0.2)" }}
-      className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-all duration-300 ease-in-out"
-    >
-      <div className="relative">
-        <Link href={`/course/${course.id}/0/0`} className="relative block">
-          <Image
-            src={course.image || "/placeholder.svg"}
-            className="object-cover w-full h-48 transition-transform duration-300 ease-in-out transform hover:scale-110"
-            width={300}
-            height={200}
-            alt={`Cover image for ${course.name}`}
+    <Link href={`/course/${course.id}/0/0`}>
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        className="group relative h-[360px] rounded-xl overflow-hidden bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-sm transition-colors hover:border-purple-400/50"
+      >
+        {/* Course Image */}
+        <div className="relative h-48 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/80 z-10" />
+          <img
+            src={course.image || '/placeholder.svg'}
+            alt={course.name}
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent flex items-end justify-start p-4">
-            <h3 className="text-white text-xl font-bold">{course.name}</h3>
-          </div>
-        </Link>
-      </div>
-
-      <div className="p-4">
-        <h4 className="text-sm text-gray-400 mb-2 font-semibold">Course Units</h4>
-        <div className="space-y-1">
-          {course.units.map((unit, unitIndex) => (
-            <Link
-              href={`/course/${course.id}/${unitIndex}/0`}
-              key={unit.id}
-              className="block text-blue-400 hover:text-blue-300 transition-colors duration-200 truncate"
-            >
-              {unit.name}
-            </Link>
-          ))}
         </div>
-      </div>
-    </motion.div>
-  );
-};
 
-export default GalleryCourseCard;
+        {/* Course Content */}
+        <div className="p-5">
+          <h3 className="text-xl font-semibold text-white mb-2 line-clamp-1">
+            {course.name}
+          </h3>
+          
+          {/* Course Units */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-white/60 mb-1">Course Units</p>
+            {course.units.slice(0, 3).map((unit, index) => (
+              <div
+                key={unit.id}
+                className="flex items-center text-sm text-white/80 hover:text-white transition-colors"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2" />
+                <span className="line-clamp-1">{unit.name}</span>
+              </div>
+            ))}
+            {course.units.length > 3 && (
+              <p className="text-sm text-white/40 pl-3">
+                +{course.units.length - 3} more units
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Hover Effect */}
+        <div className="absolute inset-0 bg-gradient-to-t from-purple-500/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      </motion.div>
+    </Link>
+  )
+}
+
+export default GalleryCourseCard
+

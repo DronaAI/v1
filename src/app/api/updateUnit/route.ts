@@ -1,17 +1,25 @@
 import { prisma } from "@/lib/db";
 import { chapterImprovementAgent } from "@/lib/AdaptiveLearningAgent";
+import { getTranscript, searchYoutube } from "@/lib/youtube";
+import { generateSummary } from "@/lib/summaryGenerator";
+import { getQuestionsFromTranscript } from "@/lib/youtube";
 import { getAuthSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-// Define the schema for request validation
+// Validation schemas
 const requestSchema = z.object({
-  unitId: z.string(), // The ID of the unit to update chapters for
+  unitId: z.string(),
+});
+
+const updatedChapterSchema = z.object({
+  title: z.string(),
+  youtube_search_query: z.string(),
 });
 
 export async function POST(req: Request) {
   try {
-    // Verify the user's authentication session
+    // Validate session
     const session = await getAuthSession();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,7 +29,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { unitId } = requestSchema.parse(body);
 
-    // Fetch the unit and its associated chapters
+    // Fetch the unit and its associated data
     const unit = await prisma.unit.findUnique({
       where: { id: unitId },
       include: { chapters: true },
@@ -31,7 +39,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
-    // Fetch the quiz results for the unit and the current user
     const unitQuizResult = await prisma.unitQuizResult.findFirst({
       where: {
         unitId: unit.id,
@@ -51,8 +58,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Format the quiz results for the AI agent
-    const formattedQuizResults = {
+    // Aggregate chapter quiz results
+    const quizResults = {
+      unitId: unitQuizResult.unitId,
       userId: unitQuizResult.userId,
       chapterResults: unitQuizResult.chapterQuizResults.map((result) => ({
         chapterId: result.chapterId,
@@ -62,50 +70,80 @@ export async function POST(req: Request) {
       })),
     };
 
-    // Use the AI agent to generate updated chapters
+    console.log("Aggregated quiz results:", quizResults);
+
+    // Pass aggregated results and existing chapters to the agent
     const updatedChapters = await chapterImprovementAgent(
-      formattedQuizResults,
+      quizResults,
       unit.chapters
     );
 
-    // Process each chapter
-    for (const chapterData of updatedChapters) {
-      // Check if the chapter already exists
-      const existingChapter = await prisma.chapter.findFirst({
-        where: {
-          unitId: unit.id,
-          name: chapterData.title,
-        },
-      });
+    const validatedChapters = updatedChapters.map((chapter) =>
+      updatedChapterSchema.parse(chapter)
+    );
 
-      if (existingChapter) {
-        // Update the existing chapter
-        await prisma.chapter.update({
-          where: { id: existingChapter.id },
-          data: {
-            youtubeSearchQuery: chapterData.youtube_search_query,
-          },
-        });
-      } else {
-        // Create a new chapter
-        await prisma.chapter.create({
+    console.log("Validated chapters:", validatedChapters);
+
+    // Delete old chapters and associated questions
+    const chapterIds = unit.chapters.map((chapter) => chapter.id);
+    await prisma.question.deleteMany({ where: { chapterId: { in: chapterIds } } });
+    await prisma.chapter.deleteMany({ where: { id: { in: chapterIds } } });
+
+    console.log("Deleted old chapters and questions.");
+
+    // Insert new chapters and questions
+    await Promise.all(
+      validatedChapters.map(async (chapterData, index) => {
+        const videoId = await searchYoutube(chapterData.youtube_search_query);
+        const transcript = await getTranscript(videoId);
+        const truncatedTranscript = transcript.split(" ").slice(0, 500).join(" ");
+        const { summary } = await generateSummary(truncatedTranscript);
+        const questions = await getQuestionsFromTranscript(
+          truncatedTranscript,
+          chapterData.title
+        );
+
+        const newChapter = await prisma.chapter.create({
           data: {
             unitId: unit.id,
             name: chapterData.title,
             youtubeSearchQuery: chapterData.youtube_search_query,
+            videoId,
+            summary,
           },
         });
-      }
-    }
+
+        await prisma.question.createMany({
+          data: questions.map((question) => ({
+            chapterId: newChapter.id,
+            question: question.question,
+            answer: question.answer,
+            options: JSON.stringify(
+              [question.answer, question.option1, question.option2, question.option3].sort(
+                () => Math.random() - 0.5
+              )
+            ),
+          })),
+        });
+
+        console.log(`Created new chapter: ${newChapter.name}`);
+      })
+    );
+
+    // Fetch updated unit
+    const updatedUnit = await prisma.unit.findUnique({
+      where: { id: unitId },
+      include: { chapters: { orderBy: { name: "asc" } } },
+    });
 
     return NextResponse.json(
-      { message: "Chapters updated successfully" },
+      { message: "Chapters updated successfully", updatedUnit },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating chapters:", error);
     return NextResponse.json(
-      { error: "Failed to update chapters", details: error.message },
+      { error: "Failed to update chapters", details: error},
       { status: 500 }
     );
   }
