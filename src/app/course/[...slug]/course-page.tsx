@@ -78,7 +78,7 @@ export function CoursePage({ course, unit, chapter }: CoursePageProps) {
                   chapterIndex={currentChapterIndex}
                 />
                 <Separator className="my-8 bg-gray-600" />
-                <QuizModal chapter={chapter} />
+                <QuizModal chapter={chapter} unit={unit} />
                 <div className="flex justify-between mt-8">
                   {prevChapter && (
                     <Link href={`/course/${course.id}/${currentUnitIndex}/${currentChapterIndex - 1}`}>

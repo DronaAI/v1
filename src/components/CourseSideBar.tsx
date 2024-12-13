@@ -1,9 +1,13 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Chapter, Course, Unit } from "@prisma/client"
+import { Button } from "@/components/ui/button"
+import { LoadingModal } from "@/components/LoadingModal"
+import { toast } from "@/components/ui/use-toast"
 
 type CourseSidebarProps = {
   course: Course & {
@@ -15,6 +19,40 @@ type CourseSidebarProps = {
 }
 
 export function CourseSidebar({ course, currentChapterId }: CourseSidebarProps) {
+  const [loadingUnit, setLoadingUnit] = useState<string | null>(null)
+
+  const handleUpdateUnit = async (unitId: string) => {
+    setLoadingUnit(unitId)
+    try {
+      const response = await fetch('/api/updateUnit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ unitId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update unit')
+      }
+
+      const data = await response.json()
+      toast({
+        title: "Success",
+        description: data.message,
+      })
+    } catch (error) {
+      console.error('Error updating unit:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update unit. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingUnit(null)
+    }
+  }
+
   return (
     <nav className="space-y-6">
       {course.units.map((unit, unitIndex) => (
@@ -27,7 +65,7 @@ export function CourseSidebar({ course, currentChapterId }: CourseSidebarProps) 
           <h2 className="text-lg font-semibold mb-3 text-blue-300">
             Unit {unitIndex + 1}: {unit.name}
           </h2>
-          <ul className="space-y-2">
+          <ul className="space-y-2 mb-4">
             {unit.chapters.map((chapter, chapterIndex) => (
               <motion.li
                 key={chapter.id}
@@ -48,8 +86,19 @@ export function CourseSidebar({ course, currentChapterId }: CourseSidebarProps) 
               </motion.li>
             ))}
           </ul>
+          <Button
+            onClick={() => handleUpdateUnit(unit.id)}
+            className="w-full bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white"
+            disabled={loadingUnit === unit.id}
+          >
+            {loadingUnit === unit.id ? 'Updating...' : 'Update Unit'}
+          </Button>
         </motion.div>
       ))}
+      <AnimatePresence>
+        {loadingUnit && <LoadingModal unitId={loadingUnit} />}
+      </AnimatePresence>
     </nav>
   )
 }
+

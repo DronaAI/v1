@@ -16,7 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Chapter } from "@prisma/client"
+import { Chapter, Unit } from "@prisma/client"
+import { toast } from "@/components/ui/use-toast"
 
 type QuizModalProps = {
   chapter: Chapter & {
@@ -27,6 +28,7 @@ type QuizModalProps = {
       answer: string
     }[]
   }
+  unit: Unit
 }
 
 const fadeInUp = {
@@ -36,7 +38,7 @@ const fadeInUp = {
   transition: { duration: 0.3 }
 }
 
-export function QuizModal({ chapter }: QuizModalProps) {
+export function QuizModal({ chapter, unit }: QuizModalProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [questionState, setQuestionState] = useState<Record<string, boolean | null>>({})
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -97,10 +99,50 @@ export function QuizModal({ chapter }: QuizModalProps) {
 
   const sendReport = async () => {
     setIsSendingReport(true)
-    // Simulate sending report
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsSendingReport(false)
-    setShowResults(true)
+    try {
+      const wrongAnswers = chapter.questions
+        .filter((question) => answers[question.id] !== question.answer)
+        .map((question) => question.question)
+
+      const reportData = {
+        unit_name: unit.name,
+        chapter_wise_results: [
+          {
+            chapter_name: chapter.name,
+            score: score,
+            wrongAnswers: wrongAnswers,
+          },
+        ],
+      }
+
+      const response = await fetch('/api/analyzeQuiz', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reportData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send report')
+      }
+
+      const result = await response.json()
+      toast({
+        title: "Report Sent",
+        description: "Your quiz results have been saved successfully.",
+      })
+      setShowResults(true)
+    } catch (error) {
+      console.error('Error sending report:', error)
+      toast({
+        title: "Error",
+        description: "Failed to send the quiz report. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSendingReport(false)
+    }
   }
 
   useEffect(() => {

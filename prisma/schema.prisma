@@ -1,4 +1,4 @@
-generator client { 
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -38,15 +38,16 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String              @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?             @unique
   emailVerified DateTime?
   image         String?
-  credits       Int       @default(10)
+  credits       Int                 @default(10)
   accounts      Account[]
   sessions      Session[]
-  quizResults   QuizResult[]
+  // Removed old QuizResult relation field
+  unitQuizResults UnitQuizResult[]
 }
 
 model Course {
@@ -57,36 +58,39 @@ model Course {
 }
 
 model Unit {
-  id       String @id @default(cuid())
-  courseId String
-  name     String
-  course   Course    @relation(fields: [courseId], references: [id])
-  chapters Chapter[]
+  id          String             @id @default(cuid())
+  courseId    String
+  name        String
+  course      Course             @relation(fields: [courseId], references: [id])
+  chapters    Chapter[]
+  // Removed old QuizResult relation field
+  unitQuizResults UnitQuizResult[]
 
   @@index([courseId], name: "courseId")
 }
 
 model Chapter {
-  id                 String     @id @default(cuid())
+  id                 String       @id @default(cuid())
   unitId             String
   name               String
   youtubeSearchQuery String
   videoId            String?
-  summary            String?    @db.VarChar(3000)
-  unit               Unit       @relation(fields: [unitId], references: [id])
+  summary            String?      @db.VarChar(3000)
+  unit               Unit         @relation(fields: [unitId], references: [id])
   questions          Question[]
-  quizResults        QuizResult[]
+  // Removed old QuizResult relation field
+  chapterQuizResults ChapterQuizResult[]
 
   @@index([unitId], name: "unitId")
 }
 
 model Question {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   chapterId String
-  question  String   @db.VarChar(3000)
-  answer    String   @db.VarChar(3000)
-  options   String   @db.VarChar(3000)
-  chapter   Chapter  @relation(fields: [chapterId], references: [id])
+  question  String  @db.VarChar(3000)
+  answer    String  @db.VarChar(3000)
+  options   String  @db.VarChar(3000)
+  chapter   Chapter @relation(fields: [chapterId], references: [id])
 
   @@index([chapterId], name: "chapterId")
 }
@@ -100,17 +104,33 @@ model UserSubscription {
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 }
 
-model QuizResult {
-  id          String   @id @default(cuid())
-  userId      String
-  chapterId   String
-  score       Int      @default(0)
-  completedAt DateTime?
+model UnitQuizResult {
+  id             String              @id @default(cuid())
+  userId         String
+  unitId         String
+  completedAt    DateTime?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  chapterQuizResults ChapterQuizResult[]
 
-  @@unique([userId, chapterId])
+  @@unique([userId, unitId])
   @@index([userId], name: "userId")
+  @@index([unitId], name: "unitId")
+}
+
+model ChapterQuizResult {
+  id               String          @id @default(cuid())
+  unitQuizResultId String
+  chapterId        String
+  score            Int             @default(0)
+  wrongAnswers     Json?       
+  completedAt      DateTime?
+
+  unitQuizResult UnitQuizResult @relation(fields: [unitQuizResultId], references: [id], onDelete: Cascade)
+  chapter        Chapter         @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([unitQuizResultId, chapterId])
   @@index([chapterId], name: "chapterId")
 }
