@@ -1,8 +1,5 @@
-// /api/chapter/getInto
-
 import { prisma } from "@/lib/db";
-import { strict_output } from "@/lib/gpt";
-import { generateSummary } from "@/lib/summaryGenerator";
+import { generateExplanations } from "@/lib/ContentGenerationAgent";
 import {
   getQuestionsFromTranscript,
   getTranscript,
@@ -10,40 +7,43 @@ import {
 } from "@/lib/youtube";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 const bodyParser = z.object({
   chapterId: z.string(),
 });
 
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { chapterId } = bodyParser.parse(body);
+
     const chapter = await prisma.chapter.findUnique({
-      where: {
-        id: chapterId,
-      },
+      where: { id: chapterId },
     });
+
     if (!chapter) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Chapter not found",
-        },
+        { success: false, error: "Chapter not found" },
         { status: 404 }
       );
     }
+
     const videoId = await searchYoutube(chapter.youtubeSearchQuery);
     let transcript = await getTranscript(videoId);
-    let maxLength = 500;
+
+    // Limit transcript
+    const maxLength = 500;
     transcript = transcript.split(" ").slice(0, maxLength).join(" ");
 
-    const { summary } = await generateSummary(transcript);
+    const explanations = await generateExplanations(chapter.name, transcript);
 
-    const questions = await getQuestionsFromTranscript(
-      transcript,
-      chapter.name
-    );
+    // Ensure explanations are valid JSON structures:
+    // Check for any undefined values and remove them if present
+    const summaryData = JSON.parse(JSON.stringify(explanations.summary));
+    const keyPointsData = JSON.parse(JSON.stringify(explanations.keyPoints));
+
+    const questions = await getQuestionsFromTranscript(transcript, chapter.name);
 
     await prisma.question.createMany({
       data: questions.map((question) => {
@@ -54,6 +54,7 @@ export async function POST(req: Request, res: Response) {
           question.option3,
         ];
         options = options.sort(() => Math.random() - 0.5);
+
         return {
           question: question.question,
           answer: question.answer,
@@ -67,30 +68,30 @@ export async function POST(req: Request, res: Response) {
       where: { id: chapterId },
       data: {
         videoId: videoId,
-        summary: summary,
+      },
+    });
+
+    // Cast to Prisma.InputJsonValue
+    await prisma.chapterContent.upsert({
+      where: { chapterId },
+      create: {
+        chapterId: chapterId,
+        summary: summaryData as unknown as Prisma.InputJsonValue,
+        keyPoints: keyPointsData as unknown as Prisma.InputJsonValue,
+      },
+      update: {
+        summary: summaryData as unknown as Prisma.InputJsonValue,
+        keyPoints: keyPointsData as unknown as Prisma.InputJsonValue,
       },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-
-    console.log(error)
+    console.error(error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid body",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Invalid body" }, { status: 400 });
     } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "unknown",
-        },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: "unknown" }, { status: 500 });
     }
   }
 }
