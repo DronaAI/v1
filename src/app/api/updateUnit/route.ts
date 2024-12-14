@@ -91,44 +91,67 @@ export async function POST(req: Request) {
 
     console.log("Deleted old chapters and questions.");
 
-    // Insert new chapters and questions
-    await Promise.all(
+    // Concurrently process chapters, retaining order
+    const processedChapters = await Promise.all(
       validatedChapters.map(async (chapterData, index) => {
-        const videoId = await searchYoutube(chapterData.youtube_search_query);
-        const transcript = await getTranscript(videoId);
-        const truncatedTranscript = transcript.split(" ").slice(0, 500).join(" ");
-        const { summary } = await generateSummary(truncatedTranscript);
-        const questions = await getQuestionsFromTranscript(
-          truncatedTranscript,
-          chapterData.title
-        );
+        try {
+          const videoId = await searchYoutube(chapterData.youtube_search_query);
+          const transcript = await getTranscript(videoId);
+          const truncatedTranscript = transcript.split(" ").slice(0, 500).join(" ");
+          const { summary } = await generateSummary(truncatedTranscript);
+          const questions = await getQuestionsFromTranscript(
+            truncatedTranscript,
+            chapterData.title
+          );
 
-        const newChapter = await prisma.chapter.create({
-          data: {
-            unitId: unit.id,
-            name: chapterData.title,
-            youtubeSearchQuery: chapterData.youtube_search_query,
-            videoId,
-            summary,
-          },
-        });
-
-        await prisma.question.createMany({
-          data: questions.map((question) => ({
-            chapterId: newChapter.id,
-            question: question.question,
-            answer: question.answer,
-            options: JSON.stringify(
-              [question.answer, question.option1, question.option2, question.option3].sort(
-                () => Math.random() - 0.5
-              )
-            ),
-          })),
-        });
-
-        console.log(`Created new chapter: ${newChapter.name}`);
+          return {
+            index,
+            data: {
+              chapterData,
+              videoId,
+              summary,
+              questions,
+            },
+          };
+        } catch (error) {
+          console.error(`Error processing chapter at index ${index}:`, error);
+          throw new Error(`Failed to process chapter: ${chapterData.title}`);
+        }
       })
     );
+
+    // Sort results by index to maintain order
+    processedChapters.sort((a, b) => a.index - b.index);
+
+    // Insert new chapters and questions
+    for (const { data } of processedChapters) {
+      const { chapterData, videoId, summary, questions } = data;
+
+      const newChapter = await prisma.chapter.create({
+        data: {
+          unitId: unit.id,
+          name: chapterData.title,
+          youtubeSearchQuery: chapterData.youtube_search_query,
+          videoId,
+          summary,
+        },
+      });
+
+      await prisma.question.createMany({
+        data: questions.map((question) => ({
+          chapterId: newChapter.id,
+          question: question.question,
+          answer: question.answer,
+          options: JSON.stringify(
+            [question.answer, question.option1, question.option2, question.option3].sort(
+              () => Math.random() - 0.5
+            )
+          ),
+        })),
+      });
+
+      console.log(`Created new chapter: ${newChapter.name}`);
+    }
 
     // Fetch updated unit
     const updatedUnit = await prisma.unit.findUnique({
@@ -143,7 +166,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error updating chapters:", error);
     return NextResponse.json(
-      { error: "Failed to update chapters", details: error},
+      { error: "Failed to update chapters", details: error },
       { status: 500 }
     );
   }

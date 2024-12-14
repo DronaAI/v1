@@ -28,10 +28,7 @@ export function MainVideoSummary({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <h2 className="text-2xl font-bold mb-4 text-purple-300">{chapter.name}</h2>
-      <p className="text-gray-400 mb-4">
-        Unit {unitIndex + 1}, Chapter {chapterIndex + 1}
-      </p>
+     
       <div className="relative rounded-lg overflow-hidden shadow-lg">
         <iframe
           title="chapter video"
