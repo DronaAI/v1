@@ -2,12 +2,17 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  compatibility: 'strict',
-});
+import { createVertex } from '@ai-sdk/google-vertex';
 
-const model = openai('gpt-4o');
+const vertexAI = createVertex({
+  project : process.env.GOOGLE_PROJECT_ID,
+  location: process.env.GOOGLE_LOCATION, 
+})
+
+
+const model = vertexAI("gemini-1.5-flash-001")
+
+
 
 export async function studentPerformanceAgent(unitResults: any, chapterResults: any) {
   const result = await generateObject({

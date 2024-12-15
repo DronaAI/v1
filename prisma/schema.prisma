@@ -38,15 +38,14 @@ model Session {
 }
 
 model User {
-  id            String              @id @default(cuid())
-  name          String?
-  email         String?             @unique
-  emailVerified DateTime?
-  image         String?
-  credits       Int                 @default(10)
-  accounts      Account[]
-  sessions      Session[]
-  // Removed old QuizResult relation field
+  id              String           @id @default(cuid())
+  name            String?
+  email           String?          @unique
+  emailVerified   DateTime?
+  image           String?
+  credits         Int              @default(10)
+  accounts        Account[]
+  sessions        Session[]
   unitQuizResults UnitQuizResult[]
 }
 
@@ -58,30 +57,38 @@ model Course {
 }
 
 model Unit {
-  id          String             @id @default(cuid())
-  courseId    String
-  name        String
-  course      Course             @relation(fields: [courseId], references: [id])
-  chapters    Chapter[]
-  // Removed old QuizResult relation field
+  id              String             @id @default(cuid())
+  courseId        String
+  name            String
+  course          Course             @relation(fields: [courseId], references: [id])
+  chapters        Chapter[]
   unitQuizResults UnitQuizResult[]
 
   @@index([courseId], name: "courseId")
 }
 
 model Chapter {
-  id                 String       @id @default(cuid())
+  id                 String             @id @default(cuid())
   unitId             String
   name               String
   youtubeSearchQuery String
   videoId            String?
-  summary            String?      @db.VarChar(3000)
-  unit               Unit         @relation(fields: [unitId], references: [id])
+  summary            String?            @db.VarChar(3000)
+  unit               Unit               @relation(fields: [unitId], references: [id])
   questions          Question[]
-  // Removed old QuizResult relation field
+  chapterContent     ChapterContent?
   chapterQuizResults ChapterQuizResult[]
 
   @@index([unitId], name: "unitId")
+}
+
+model ChapterContent {
+  id         String   @id @default(cuid())
+  chapterId  String   @unique
+  summary    Json     @db.Json
+  keyPoints  Json     @db.Json
+
+  chapter Chapter @relation(fields: [chapterId], references: [id])
 }
 
 model Question {
@@ -109,7 +116,7 @@ model UnitQuizResult {
   userId         String
   unitId         String
   completedAt    DateTime?
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 

@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/db";
 import { chapterImprovementAgent } from "@/lib/AdaptiveLearningAgent";
 import { getTranscript, searchYoutube } from "@/lib/youtube";
-import { generateSummary } from "@/lib/summaryGenerator";
 import { getQuestionsFromTranscript } from "@/lib/youtube";
 import { getAuthSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { generateExplanations } from "@/lib/ContentGenerationAgent"; // Adjust path if needed
 
 // Validation schemas
 const requestSchema = z.object({
@@ -73,10 +74,7 @@ export async function POST(req: Request) {
     console.log("Aggregated quiz results:", quizResults);
 
     // Pass aggregated results and existing chapters to the agent
-    const updatedChapters = await chapterImprovementAgent(
-      quizResults,
-      unit.chapters
-    );
+    const updatedChapters = await chapterImprovementAgent(quizResults, unit.chapters);
 
     const validatedChapters = updatedChapters.map((chapter) =>
       updatedChapterSchema.parse(chapter)
@@ -91,25 +89,25 @@ export async function POST(req: Request) {
 
     console.log("Deleted old chapters and questions.");
 
-    // Concurrently process chapters, retaining order
+    // Process chapters concurrently, retaining order
     const processedChapters = await Promise.all(
       validatedChapters.map(async (chapterData, index) => {
         try {
           const videoId = await searchYoutube(chapterData.youtube_search_query);
           const transcript = await getTranscript(videoId);
           const truncatedTranscript = transcript.split(" ").slice(0, 500).join(" ");
-          const { summary } = await generateSummary(truncatedTranscript);
-          const questions = await getQuestionsFromTranscript(
-            truncatedTranscript,
-            chapterData.title
-          );
+
+          // Use generateExplanations instead of generateSummary
+          const explanations = await generateExplanations(chapterData.title, truncatedTranscript);
+          
+          const questions = await getQuestionsFromTranscript(truncatedTranscript, chapterData.title);
 
           return {
             index,
             data: {
               chapterData,
               videoId,
-              summary,
+              explanations, // { summary: [...], keyPoints: [...] }
               questions,
             },
           };
@@ -125,18 +123,19 @@ export async function POST(req: Request) {
 
     // Insert new chapters and questions
     for (const { data } of processedChapters) {
-      const { chapterData, videoId, summary, questions } = data;
+      const { chapterData, videoId, explanations, questions } = data;
 
+      // Create the new chapter (no summary in chapter now)
       const newChapter = await prisma.chapter.create({
         data: {
           unitId: unit.id,
           name: chapterData.title,
           youtubeSearchQuery: chapterData.youtube_search_query,
           videoId,
-          summary,
         },
       });
 
+      // Insert the questions
       await prisma.question.createMany({
         data: questions.map((question) => ({
           chapterId: newChapter.id,
@@ -148,6 +147,19 @@ export async function POST(req: Request) {
             )
           ),
         })),
+      });
+
+      // Insert ChapterContent with summary and keyPoints
+      // Ensure the data is valid JSON and cast to Prisma.InputJsonValue
+      const summaryData = JSON.parse(JSON.stringify(explanations.summary));
+      const keyPointsData = JSON.parse(JSON.stringify(explanations.keyPoints));
+
+      await prisma.chapterContent.create({
+        data: {
+          chapterId: newChapter.id,
+          summary: summaryData as unknown as Prisma.InputJsonValue,
+          keyPoints: keyPointsData as unknown as Prisma.InputJsonValue,
+        },
       });
 
       console.log(`Created new chapter: ${newChapter.name}`);
@@ -166,7 +178,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error updating chapters:", error);
     return NextResponse.json(
-      { error: "Failed to update chapters", details: error },
+      { error: "Failed to update chapters", details: String(error) },
       { status: 500 }
     );
   }

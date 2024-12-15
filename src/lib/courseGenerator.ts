@@ -12,7 +12,15 @@ const openai = createOpenAI({
   });
 
 
-  const model = openai('gpt-4o');
+  const vertexAI = createVertex({
+    project : process.env.GOOGLE_PROJECT_ID,
+    location: process.env.GOOGLE_LOCATION, 
+  })
+
+
+  const model = vertexAI("gemini-1.5-pro",{
+    structuredOutputs: false
+  })
 
 
 
