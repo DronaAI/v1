@@ -11,27 +11,38 @@ import { checkSubscription } from "@/lib/subscription";
 import { createThumbnail } from "@/lib/thumbnailGenerator";
 import { createCourse } from "@/lib/courseGenerator";
 
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) { // Removed `res: Response` as it's not used in Next.js API routes
   try {
     const session = await getAuthSession();
-    if (!session?.user) {
-      return new NextResponse("unauthorised", { status: 401 });
+    console.log("Session User ID:", session?.user?.id); // Logging for debugging
+
+    if (!session?.user || !session.user.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    // Verify user exists in the database
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
+    if (!user) {
+      return new NextResponse("User not found", { status: 404 });
+    }
+
     const isPro = await checkSubscription();
-    if (session.user.credits <= 0 && !isPro) {
-      return new NextResponse("no credits", { status: 402 });
+    if (user.credits <= 0 && !isPro) {
+      return new NextResponse("No credits", { status: 402 });
     }
+
     const body = await req.json();
     const { title, units } = createChaptersSchema.parse(body);
 
-    
-    let result = await createCourse(title , units.length) ;
+    let result = await createCourse(title, units.length);
 
-    const imageSearchTerm = createThumbnail(title)
+    const imageSearchTerm = await createThumbnail(title);
 
-    const course_image = await getUnsplashImage(
-      (await imageSearchTerm).image_search_term
-    );
+    const course_image = await getUnsplashImage(imageSearchTerm.image_search_term);
+
     const course = await prisma.course.create({
       data: {
         name: title,
@@ -40,39 +51,35 @@ export async function POST(req: Request, res: Response) {
     });
 
     for (const unit of result.outputUnits) {
-      const title = unit.title;
+      const unitTitle = unit.title;
       const prismaUnit = await prisma.unit.create({
         data: {
-          name: title,
+          name: unitTitle,
           courseId: course.id,
         },
       });
+
       await prisma.chapter.createMany({
-        data: unit.chapters.map((chapter) => {
-          return {
-            name: chapter.chapter_title,
-            youtubeSearchQuery: chapter.youtube_search_query,
-            unitId: prismaUnit.id,
-          };
-        }),
+        data: unit.chapters.map((chapter) => ({
+          name: chapter.chapter_title,
+          youtubeSearchQuery: chapter.youtube_search_query,
+          unitId: prismaUnit.id,
+        })),
       });
     }
+
+    // Update user credits
     await prisma.user.update({
-      where: {
-        id: session.user.id,
-      },
-      data: {
-        credits: {
-          decrement: 1,
-        },
-      },
+      where: { id: session.user.id },
+      data: { credits: { decrement: 1 } },
     });
 
     return NextResponse.json({ course_id: course.id });
   } catch (error) {
     if (error instanceof ZodError) {
-      return new NextResponse("invalid body", { status: 400 });
+      return new NextResponse("Invalid request body", { status: 400 });
     }
-    console.error(error);
+    console.error("Unexpected error:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

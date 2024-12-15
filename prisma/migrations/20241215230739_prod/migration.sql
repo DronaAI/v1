@@ -76,6 +76,17 @@ CREATE TABLE `Chapter` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `ChapterContent` (
+    `id` VARCHAR(191) NOT NULL,
+    `chapterId` VARCHAR(191) NOT NULL,
+    `summary` JSON NOT NULL,
+    `keyPoints` JSON NOT NULL,
+
+    UNIQUE INDEX `ChapterContent_chapterId_key`(`chapterId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `Question` (
     `id` VARCHAR(191) NOT NULL,
     `chapterId` VARCHAR(191) NOT NULL,
@@ -103,17 +114,28 @@ CREATE TABLE `UserSubscription` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `QuizResult` (
+CREATE TABLE `UnitQuizResult` (
     `id` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
-    `chapterId` VARCHAR(191) NOT NULL,
     `unitId` VARCHAR(191) NOT NULL,
-    `score` INTEGER NOT NULL DEFAULT 0,
     `completedAt` DATETIME(3) NULL,
 
     INDEX `userId`(`userId`),
-    INDEX `chapterId`(`chapterId`),
     INDEX `unitId`(`unitId`),
-    UNIQUE INDEX `QuizResult_userId_chapterId_key`(`userId`, `chapterId`),
+    UNIQUE INDEX `UnitQuizResult_userId_unitId_key`(`userId`, `unitId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ChapterQuizResult` (
+    `id` VARCHAR(191) NOT NULL,
+    `unitQuizResultId` VARCHAR(191) NOT NULL,
+    `chapterId` VARCHAR(191) NOT NULL,
+    `score` INTEGER NOT NULL DEFAULT 0,
+    `wrongAnswers` JSON NULL,
+    `completedAt` DATETIME(3) NULL,
+
+    INDEX `chapterId`(`chapterId`),
+    UNIQUE INDEX `ChapterQuizResult_unitQuizResultId_chapterId_key`(`unitQuizResultId`, `chapterId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
