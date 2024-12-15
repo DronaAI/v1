@@ -1,13 +1,18 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
+import { createVertex } from '@ai-sdk/google-vertex';
 
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  compatibility: 'strict',
-});
+const vertexAI = createVertex({
+  project : process.env.GOOGLE_PROJECT_ID,
+  location: process.env.GOOGLE_LOCATION, 
+})
 
-const model = openai('gpt-4o');
+
+const model = vertexAI("gemini-1.5-flash", {
+  useSearchGrounding: true,
+  structuredOutputs: false
+})
 
 // Define the schema exactly as in the given example structure.
 const schema = z.object({
