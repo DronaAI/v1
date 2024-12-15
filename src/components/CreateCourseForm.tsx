@@ -16,6 +16,8 @@ import { Button } from "./ui/button"
 import { useToast } from "./ui/use-toast"
 import { Progress } from "./ui/progress"
 
+import { useSession } from "next-auth/react"
+
 type Props = { isPro: boolean }
 
 type Input = z.infer<typeof createChaptersSchema>
@@ -23,6 +25,7 @@ type Input = z.infer<typeof createChaptersSchema>
 const CreateCourseForm = ({ isPro }: Props) => {
   const router = useRouter()
   const { toast } = useToast()
+  const session = useSession()
   const { mutate: createChapters, isLoading } = useMutation({
     mutationFn: async ({ title, units }: Input) => {
       const response = await axios.post("/api/course/createChapters", {
@@ -165,7 +168,7 @@ const CreateCourseForm = ({ isPro }: Props) => {
           className="mt-8 rounded-xl bg-[#1a1b2e] p-6 space-y-4"
         >
           <div className="flex justify-between text-sm text-white/80 mb-1">
-            <span>3 / 10 Free Generations</span>
+            <span>{session.data?.user.credits}/ 10 Free Generations</span>
           </div>
           <Progress value={30} className="bg-white/10 h-2">
             <div className="bg-gradient-to-r from-blue-400 to-purple-400 h-full rounded-full" />
