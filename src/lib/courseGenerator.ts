@@ -5,22 +5,20 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 
 
-const openai = createOpenAI({
+const vertexAI = createOpenAI({
     // custom settings, e.g.
     apiKey  : process.env.OPENAI_API_KEY,
     compatibility: 'strict', // strict mode, enable when using the OpenAI API
   });
 
 
-  const vertexAI = createVertex({
-    project : process.env.GOOGLE_PROJECT_ID,
-    location: process.env.GOOGLE_LOCATION, 
-  })
+//   const vertexAI = createVertex({
+//     project : process.env.GOOGLE_PROJECT_ID,
+//     location: process.env.GOOGLE_LOCATION, 
+//   })
 
 
-  const model = vertexAI("gemini-1.5-pro",{
-    structuredOutputs: false
-  })
+  const model = vertexAI("gpt-4o-mini")
 
 
 

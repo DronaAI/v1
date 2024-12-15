@@ -8,7 +8,7 @@ const vertexAi = createOpenAI({
   compatibility: 'strict', // strict mode, enable when using the OpenAI API
 });
 
-const model = vertexAi("gpt-4o")
+const model = vertexAi("gpt-4o-mini")
 
 
 
