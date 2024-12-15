@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  Production:
+    name: Deploy to Google Compute Cloud
+    runs-on: ubuntu-latest
+    environment: Production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Secrets
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.SSH_HOST }}" ] || [ -z "${{ secrets.SSH_USER_NAME }}" ]; then
+            echo "Error: Missing required secrets!"
+            exit 1
+          fi
+
+      - name: Build & Deploy
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER_NAME: ${{ secrets.SSH_USER_NAME }}
+        run: |
+          echo "Deploying to Google Cloud"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key && chmod 600 private_key
+
+          ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.SSH_USER_NAME }}@${{ secrets.SSH_HOST }} << 'EOF'
+          set -e
+          echo "Navigating to project directory..."
+          cd /home/rudranshshinghal91/v1
+
+          echo "Pulling latest changes..."
+          git reset --hard
+          git checkout main
+          git pull origin main
+
+          echo "Stopping and removing existing containers..."
+          sudo docker compose down
+
+          echo "Pruning unused Docker images..."
+          sudo docker image prune -f
+
+          echo "Rebuilding and restarting Docker containers..."
+          sudo docker compose up --build -d
+
+          echo "Deployment complete."
+          EOF
+
+      - name: Cleanup
+        run: |
+          echo "Cleaning up temporary files..."
+          rm -f private_key
