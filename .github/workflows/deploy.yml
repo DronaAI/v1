@@ -16,7 +16,7 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_HOST: ${{secrets.SSH_HOST}}
-          USER_NAME: ${{secrets.USER_NAME}}
+          USER_NAME: ${{secrets.SSH_USER_NAME}}
 
         run: |
           echo "Deploying to Google Cloud"
