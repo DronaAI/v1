@@ -8,7 +8,7 @@ const analyzeQuizSchema = z.object({
   chapter_wise_results: z.array(
     z.object({
       chapter_name: z.string(),
-      score: z.number(),
+      score: z.number().min(0, "Score must be non-negative"),
       wrongAnswers: z.array(z.string()),
     })
   ),
@@ -16,13 +16,13 @@ const analyzeQuizSchema = z.object({
 
 export async function POST(req: Request) {
   const session = await getAuthSession();
+
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
-
   try {
+    const body = await req.json();
     const { unit_name, chapter_wise_results } = analyzeQuizSchema.parse(body);
 
     // Find the Unit
@@ -34,57 +34,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
-    // Check if `unitQuizResult` already exists for this user and unit
-    let unitQuizResult = await prisma.unitQuizResult.findFirst({
+    // Check or create `unitQuizResult` for this user and unit
+    const unitQuizResult = await prisma.unitQuizResult.upsert({
       where: {
+        userId_unitId: { userId: session.user.id, unitId: unit.id },
+      },
+      update: {},
+      create: {
         userId: session.user.id,
         unitId: unit.id,
       },
     });
 
-    // Create `unitQuizResult` if it doesn't exist
-    if (!unitQuizResult) {
-      unitQuizResult = await prisma.unitQuizResult.create({
-        data: {
-          userId: session.user.id,
-          unitId: unit.id,
-        },
-      });
-    }
+    // Fetch all chapters for the unit in a single query
+    const chapters = await prisma.chapter.findMany({
+      where: { unitId: unit.id },
+      select: { id: true, name: true },
+    });
 
-    // Prepare chapter results for bulk creation
-    const chapterResultsData = [];
-    for (const result of chapter_wise_results) {
-      const chapter = await prisma.chapter.findFirst({
-        where: {
-          unitId: unit.id,
-          name: result.chapter_name,
-        },
-      });
+    const chapterMap = new Map(chapters.map((chapter) => [chapter.name, chapter.id]));
 
-      if (!chapter) {
-        return NextResponse.json(
-          { error: `Chapter not found: ${result.chapter_name}` },
-          { status: 404 }
-        );
+    // Prepare data for bulk creation
+    const chapterResultsData = chapter_wise_results.map((result) => {
+      const chapterId = chapterMap.get(result.chapter_name);
+      if (!chapterId) {
+        throw new Error(`Chapter not found: ${result.chapter_name}`);
       }
-
-      chapterResultsData.push({
+      return {
         unitQuizResultId: unitQuizResult.id,
-        chapterId: chapter.id,
+        chapterId,
         score: result.score,
         wrongAnswers: result.wrongAnswers,
-      });
-    }
+      };
+    });
 
     // Create all chapter quiz results in bulk
     await prisma.chapterQuizResult.createMany({
       data: chapterResultsData,
+      skipDuplicates: true, // Prevents duplicate entries if results already exist
     });
 
-    return NextResponse.json({ message: "Quiz results saved successfully" }, { status: 200 });
+    return NextResponse.json(
+      { message: "Quiz results saved successfully" },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error processing quiz results:", error);
+
+    // Return detailed error messages for Zod validation or other errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid input", details: error.errors },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to process quiz results", details: error },
       { status: 500 }

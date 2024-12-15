@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     // Validate session
     const session = await getAuthSession();
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized: User is not logged in" }, { status: 401 });
     }
 
     // Parse and validate the request body
@@ -30,23 +30,23 @@ export async function POST(req: Request) {
             chapterQuizResults: {
               where: {
                 unitQuizResult: {
-                  userId: session.user.id
-                }
-              }
-            }
-          }
+                  userId: session.user.id,
+                },
+              },
+            },
+          },
         },
         unitQuizResults: {
           where: {
-            userId: session.user.id
+            userId: session.user.id,
           },
           include: {
             chapterQuizResults: {
-              include: { chapter: true }
-            }
-          }
-        }
-      }
+              include: { chapter: true },
+            },
+          },
+        },
+      },
     });
 
     if (!unit) {
@@ -62,21 +62,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // Prepare data for studentPerformanceAgent
+    // Aggregate data for studentPerformanceAgent
+    const chapterScores = unit.chapters.map((chapter) => {
+      const chapterQuizResult = chapter.chapterQuizResults[0];
+      return {
+        chapterId: chapter.id,
+        chapterName: chapter.name,
+        score: chapterQuizResult?.score || 0,
+        maxScore: chapter.questions.length,
+      };
+    });
+
+    const totalScore = chapterScores.reduce((sum, chapter) => sum + chapter.score, 0);
+    const maxScore = chapterScores.reduce((sum, chapter) => sum + chapter.maxScore, 0);
+
     const unitResults = {
       unitId: unit.id,
       unitName: unit.name,
-      totalScore: unitQuizResult.chapterQuizResults.reduce((sum, result) => sum + result.score, 0),
-      maxScore: unit.chapters.reduce((sum, chapter) => sum + chapter.questions.length, 0),
-      chapterScores: unit.chapters.map((chapter) => {
-        const chapterQuizResult = chapter.chapterQuizResults[0];
-        return {
-          chapterId: chapter.id,
-          chapterName: chapter.name,
-          score: chapterQuizResult?.score || 0,
-          maxScore: chapter.questions.length,
-        };
-      }),
+      totalScore,
+      maxScore,
+      chapterScores,
     };
 
     const chapterResults = unit.chapters.map((chapter) => {
@@ -86,7 +91,7 @@ export async function POST(req: Request) {
         chapterName: chapter.name,
         score: chapterQuizResult?.score || 0,
         maxScore: chapter.questions.length,
-        wrongAnswers: chapterQuizResult?.wrongAnswers as string[] || [],
+        wrongAnswers: (chapterQuizResult?.wrongAnswers as string[]) || [],
       };
     });
 
@@ -95,11 +100,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ analysis }, { status: 200 });
   } catch (error) {
-    console.error("Error providing insights:", error);
+    console.error("Error processing POST request:", error);
+
+    const errorMessage = 
+      error instanceof z.ZodError 
+        ? "Invalid request body" 
+        : "Internal server error";
+
     return NextResponse.json(
-      { error: "Failed to provide insights", details: error },
-      { status: 500 }
+      { error: errorMessage, details: error instanceof z.ZodError ? error.errors : error },
+      { status: error instanceof z.ZodError ? 400 : 500 }
     );
   }
 }
-
