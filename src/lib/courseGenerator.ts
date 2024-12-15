@@ -18,7 +18,7 @@ const vertexAI = createOpenAI({
 //   })
 
 
-  const model = vertexAI("gpt-4o-mini")
+  const model = vertexAI("gpt-4o")
 
 
 
