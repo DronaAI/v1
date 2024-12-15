@@ -16,11 +16,20 @@ const model = vertexAI("gemini-1.5-flash-002",{
 })
 
 
+const openAi = createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    compatibility: 'strict',
+  })
+  
+  
+  const gemini = openAi("gpt-4o")
+
+
 
 
 export async function createQuiz(topic: string, transcript : string , number : number) {
     const result = await generateObject({
-        model: model,
+        model: gemini,
         schema: z.object({
            questions : z.array(z.object({
                 question: z.string(),

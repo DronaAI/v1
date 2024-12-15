@@ -14,6 +14,14 @@ const model = vertexAI("gemini-1.5-flash", {
   structuredOutputs: false
 })
 
+
+const vertex = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  compatibility: 'strict'
+})
+
+
+const gemini = vertex("gpt-4o")
 // Define the schema exactly as in the given example structure.
 const schema = z.object({
   summary: z.array(
@@ -52,7 +60,7 @@ const schema = z.object({
  */
 export async function generateExplanations(topic:string , transcript:string) {
   const result = await generateObject({
-    model,
+    model: gemini,
     schema,
     system: `You are an educational content generator specialized in creating concise, engaging, and informative material for students. Your role is to create summaries, explanations, and flashcards for educational topics, tailored to different learning contexts (e.g., summaries, key points). Ensure your responses are aligned with the provided transcript, and differentiate content appropriately between summary and key points.`,
     prompt: `

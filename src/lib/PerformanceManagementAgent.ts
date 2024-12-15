@@ -10,13 +10,18 @@ const vertexAI = createVertex({
 })
 
 
-const model = vertexAI("gemini-1.5-flash-001")
+const openAi = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  compatibility: 'strict',
+})
 
+
+const gemini = openAi("gpt-4o")
 
 
 export async function studentPerformanceAgent(unitResults: any, chapterResults: any) {
   const result = await generateObject({
-    model: model,
+    model: gemini,
     schema: z.object({
       analysis: z.object({
         strengths: z.array(z.string()),

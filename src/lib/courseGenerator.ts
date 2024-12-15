@@ -22,11 +22,14 @@ const openai = createOpenAI({
     structuredOutputs: false
   })
 
+const gemini = openai("gpt-4o")
+
+  
 
 
 export async function createCourse(topic: string, units: number) {
     const result = await generateObject({
-        model: model,
+        model: gemini,
         schema: z.object({
             outputUnits  : (z.array(z.object({
                 title: z.string(),

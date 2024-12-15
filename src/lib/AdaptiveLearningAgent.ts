@@ -11,11 +11,17 @@ const vertexAI = createVertex({
 
 const model = vertexAI("gemini-1.0-pro")
 
+const openAi = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  compatibility: 'strict',
+})
 
+
+const gemini = openAi("gpt-4o")
 
   export async function chapterImprovementAgent(quiz_results: any, chapters: any) {
     const result = await generateObject({
-      model: model,
+      model: gemini,
       schema: z.object({
         chapters: z.array(
           z.object({
