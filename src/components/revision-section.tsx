@@ -1,17 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { ChevronRight, Brain, BookOpen } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { ExplanationModal } from "./explanation-modal"
-import { CongratulatoryModal } from "./congratulatory-modal"
 import { toast } from "@/components/ui/use-toast"
 import { Chapter } from "@prisma/client"
-import { ChapterContentSchema, ChapterContent, ContentObject } from "./schemas" // Ensure the path is correct
+import { ChapterContentSchema, ChapterContent } from "./schemas"
 
 type RevisionSectionProps = {
   chapter: Chapter
@@ -22,7 +21,6 @@ export function RevisionSection({ chapter, onStartQuiz }: RevisionSectionProps) 
   const [currentSection, setCurrentSection] = useState<"summary" | "keyPoints">("summary")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [revealedItems, setRevealedItems] = useState<boolean[]>([])
-  const [showCongrats, setShowCongrats] = useState(false)
   const [showExplanation, setShowExplanation] = useState(false)
   const [selectedItemIndex, setSelectedItemIndex] = useState(0)
   const [chapterContent, setChapterContent] = useState<ChapterContent | null>(null)
@@ -40,15 +38,12 @@ export function RevisionSection({ chapter, onStartQuiz }: RevisionSectionProps) 
       }
 
       try {
-        console.log(`Fetching content for chapterId: ${chapter.id}`)
         const response = await fetch(`/api/chapter/${chapter.id}/content`)
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         const data = await response.json()
-        console.log(`Received data for chapterId ${chapter.id}:`, data)
 
-        // Validate the fetched data using Zod
         const chapterResult = ChapterContentSchema.safeParse(data)
         if (chapterResult.success) {
           setChapterContent(chapterResult.data)
@@ -90,10 +85,6 @@ export function RevisionSection({ chapter, onStartQuiz }: RevisionSectionProps) 
         setShowExplanation(true)
       }
     }
-
-    if (currentIndex === currentContent.length - 1) {
-      setShowCongrats(true)
-    }
   }
 
   const handleItemClick = (index: number) => {
@@ -119,20 +110,6 @@ export function RevisionSection({ chapter, onStartQuiz }: RevisionSectionProps) 
     setCurrentSection(section)
     setCurrentIndex(0)
     setRevealedItems(new Array(chapterContent ? chapterContent[section].length : 0).fill(false))
-    setShowCongrats(false)
-  }
-
-  const handleViewOtherSection = () => {
-    switchSection(currentSection === "summary" ? "keyPoints" : "summary")
-  }
-
-  const handleCloseCongrats = () => {
-    setShowCongrats(false)
-    if (currentSection === "summary") {
-      switchSection("keyPoints")
-    } else {
-      onStartQuiz()
-    }
   }
 
   const progressPercentage = currentContent.length > 0 ? (currentIndex / currentContent.length) * 100 : 0
@@ -144,7 +121,7 @@ export function RevisionSection({ chapter, onStartQuiz }: RevisionSectionProps) 
   return (
     <div className="space-y-4">
       <Card className="bg-gray-800/50 backdrop-blur-lg border-none shadow-lg">
-        <CardHeader>
+        <CardHeader className="pb-4">
           <CardTitle className="text-2xl font-bold text-white flex items-center justify-between">
             <div className="flex items-center">
               {currentSection === "summary" ? (
@@ -201,46 +178,61 @@ export function RevisionSection({ chapter, onStartQuiz }: RevisionSectionProps) 
           </div>
 
           <div className="space-y-4 mb-6">
-            {currentContent.map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: revealedItems[index] ? 1 : 0.3, y: 0 }}
-                transition={{ duration: 0.5 }}
-                onClick={() => handleItemClick(index)}
-                className={cn(
-                  "p-4 rounded-lg transition-all",
-                  revealedItems[index] 
-                    ? currentSection === "summary" 
-                      ? "bg-blue-500/20 text-white cursor-pointer hover:bg-blue-500/30" 
-                      : "bg-purple-500/20 text-white cursor-pointer hover:bg-purple-500/30"
-                    : "bg-gray-700/50 text-gray-500"
-                )}
-              >
-                {typeof item === 'string' ? item : item.title}
-              </motion.div>
-            ))}
+            <AnimatePresence>
+              {currentContent.map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ 
+                    opacity: revealedItems[index] ? 1 : 0.3, 
+                    y: 0,
+                  }}
+                  transition={{ duration: 0.5 }}
+                  onClick={() => handleItemClick(index)}
+                  className={cn(
+                    "p-4 rounded-lg transition-all",
+                    "break-words whitespace-normal",
+                    revealedItems[index] 
+                      ? currentSection === "summary" 
+                        ? "bg-blue-500/20 text-white cursor-pointer hover:bg-blue-500/30" 
+                        : "bg-purple-500/20 text-white cursor-pointer hover:bg-purple-500/30"
+                      : "bg-gray-700/50 text-gray-500"
+                  )}
+                >
+                  <div className="text-lg font-medium">
+                    {typeof item === 'string' ? item : item.title}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
 
-          {!showCongrats && (
+          <div className="flex flex-col gap-3">
+            {currentIndex < currentContent.length && (
+              <Button
+                onClick={revealItem}
+                className={cn(
+                  "w-full text-white",
+                  currentSection === "summary"
+                    ? "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                    : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                )}
+              >
+                Reveal Next {currentSection === "summary" ? "Summary Point" : "Concept"}
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+            
             <Button
-              onClick={revealItem}
-              disabled={currentIndex >= currentContent.length}
-              className={cn(
-                "w-full text-white",
-                currentSection === "summary"
-                  ? "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-                  : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-              )}
+              onClick={onStartQuiz}
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white"
             >
-              Reveal Next {currentSection === "summary" ? "Summary Point" : "Concept"}
-              <ChevronRight className="ml-2 h-4 w-4" />
+              Attempt Quiz
             </Button>
-          )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Explanation Modal */}
       <ExplanationModal
         isOpen={showExplanation}
         onClose={() => setShowExplanation(false)}
@@ -251,15 +243,6 @@ export function RevisionSection({ chapter, onStartQuiz }: RevisionSectionProps) 
         }}
         onPrevious={selectedItemIndex > 0 ? handlePreviousExplanation : undefined}
         onNext={selectedItemIndex < currentContent.length - 1 ? handleNextExplanation : undefined}
-      />
-
-      {/* Congratulatory Modal */}
-      <CongratulatoryModal
-        isOpen={showCongrats}
-        onClose={handleCloseCongrats}
-        onStartQuiz={onStartQuiz}
-        onViewOtherSection={handleViewOtherSection}
-        currentSection={currentSection}
       />
     </div>
   )

@@ -43,11 +43,7 @@ export async function GET(
 
     const chapterName = chapter?.name || "Untitled Chapter";
 
-    console.log(`Returning data for chapterId: ${chapterId}`, {
-      summary,
-      keyPoints,
-      chapterName,
-    });
+    
 
     return NextResponse.json({ summary, keyPoints, chapterName }, { status: 200 });
   } catch (error) {

@@ -2,28 +2,26 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
-import { FlashCard } from "./flash-card"
 import { 
   ContentSchema, 
   ChapterContentSchema, 
   Content, 
   ChapterContent, 
-  ContentObject 
-} from "./schemas" // Ensure the path is correct
+  ContentObject,
+  Flashcard
+} from "./schemas"
 
 type ExplanationModalProps = {
   isOpen: boolean
   onClose: () => void
-  currentContent: {
-    chapterId?: string
-    chapterName: string
-    content: string | ContentObject
-  }
+  currentContent: unknown
   onPrevious?: () => void
   onNext?: () => void
   showNavigation?: boolean
@@ -32,21 +30,24 @@ type ExplanationModalProps = {
 export function ExplanationModal({
   isOpen,
   onClose,
-  currentContent,
+  currentContent: rawCurrentContent,
   onPrevious,
   onNext,
   showNavigation = true
 }: ExplanationModalProps) {
+  const [currentCardIndex, setCurrentCardIndex] = useState(0)
+  const [isFlipped, setIsFlipped] = useState(false)
+  const [showFlashcards, setShowFlashcards] = useState(false)
   const [parsedContent, setParsedContent] = useState<Content | null>(null)
-  const [chapterContent, setChapterContent] = useState<ChapterContent | null>(null)
-  const [activeTab, setActiveTab] = useState<'summary' | 'keyPoints'>('summary')
-  const [expandedPoints, setExpandedPoints] = useState<{ [key: number]: boolean }>({})
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
 
-  // Validate currentContent using Zod
   useEffect(() => {
-    const result = ContentSchema.safeParse(currentContent)
+    const result = ContentSchema.safeParse(rawCurrentContent)
     if (result.success) {
       setParsedContent(result.data)
+      if (result.data.content && typeof result.data.content === 'object' && 'flashcards' in result.data.content) {
+        setFlashcards(result.data.content.flashcards)
+      }
     } else {
       console.error("Content validation failed:", result.error)
       toast({
@@ -56,193 +57,196 @@ export function ExplanationModal({
       })
       onClose()
     }
-  }, [currentContent, onClose])
+  }, [rawCurrentContent, onClose])
 
-  // Fetch chapter content when modal is open and chapterId is available
-  useEffect(() => {
-    if (isOpen && parsedContent?.chapterId) {
-      const fetchChapterContent = async () => {
-        try {
-          console.log(`Fetching content for chapterId: ${parsedContent.chapterId}`)
-          const response = await fetch(`/api/chapter/${parsedContent.chapterId}/content`)
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-          }
-          const data = await response.json()
-          console.log(`Received data for chapterId ${parsedContent.chapterId}:`, data)
-
-          // Validate chapterContent
-          const chapterResult = ChapterContentSchema.safeParse(data)
-          if (chapterResult.success) {
-            setChapterContent(chapterResult.data)
-          } else {
-            console.error("Chapter content validation failed:", chapterResult.error)
-            toast({
-              title: "Error",
-              description: "Failed to load chapter content. Please try again.",
-              variant: "destructive",
-            })
-          }
-        } catch (error) {
-          console.error("Failed to fetch chapter content:", error)
-          toast({
-            title: "Error",
-            description: "Failed to load chapter content. Please try again.",
-            variant: "destructive",
-          })
-        }
-      }
-
-      fetchChapterContent()
+  const handleNextCard = () => {
+    if (currentCardIndex < flashcards.length - 1) {
+      setCurrentCardIndex(prev => prev + 1)
+      setIsFlipped(false)
     }
-  }, [isOpen, parsedContent?.chapterId])
+  }
 
-  // Reset activeTab and expandedPoints when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab('summary')
-      setExpandedPoints({})
+  const handlePreviousCard = () => {
+    if (currentCardIndex > 0) {
+      setCurrentCardIndex(prev => prev - 1)
+      setIsFlipped(false)
     }
-  }, [isOpen])
+  }
 
   if (!parsedContent) {
     return null
   }
 
-  const toggleExpand = (index: number) => {
-    setExpandedPoints(prev => ({
-      ...prev,
-      [index]: !prev[index]
-    }))
-  }
-
-  const renderPointCard = (point: string | ContentObject, index: number) => {
-    if (typeof point === 'string') {
-      return (
-        <div key={index} className="bg-white/10 p-4 rounded-lg shadow-md">
-          <p className="text-white">{point}</p>
-        </div>
-      )
-    } else {
-      return (
-        <div key={index} className="bg-white/10 p-4 rounded-lg shadow-md">
-          <div className="flex justify-between items-center">
-            <h4 className="text-white font-semibold">{point.title}</h4>
-            <button onClick={() => toggleExpand(index)} aria-label="Toggle Explanation">
-              {expandedPoints[index] ? <ChevronUp className="h-4 w-4 text-white" /> : <ChevronDown className="h-4 w-4 text-white" />}
-            </button>
-          </div>
-          <AnimatePresence>
-            {expandedPoints[index] && (
+  return (
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-4xl bg-gray-900/95 border-gray-800 backdrop-blur-xl p-6">
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          
+          <AnimatePresence mode="wait">
+            {!showFlashcards ? (
               <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-2 overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
               >
-                <p className="text-white/80">{point.explanation || "No explanation provided."}</p>
-                {point.flashcards && point.flashcards.length > 0 && (
-                  <div className="mt-4 space-y-4">
-                    {point.flashcards.map((flashcard, fcIndex) => (
-                      <FlashCard
-                        key={fcIndex}
-                        front={flashcard.front}
-                        back={flashcard.back}
-                        index={fcIndex}
-                        total={point.flashcards.length}
-                      />
-                    ))}
+                <h2 className="text-2xl font-bold text-white">{parsedContent.chapterName}</h2>
+                <div className="prose prose-invert max-w-none">
+                  {typeof parsedContent.content === 'string' ? (
+                    <p>{parsedContent.content}</p>
+                  ) : (
+                    <>
+                      <h3 className="text-xl font-semibold">{parsedContent.content.title}</h3>
+                      <p>{parsedContent.content.explanation}</p>
+                    </>
+                  )}
+                </div>
+                <div className="flex justify-between items-center pt-4">
+                  {flashcards.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowFlashcards(true)}
+                      className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20"
+                    >
+                      Review Flashcards
+                    </Button>
+                  )}
+                  {showNavigation && (
+                    <div className="flex gap-2">
+                      {onPrevious && (
+                        <Button
+                          variant="outline"
+                          onClick={onPrevious}
+                          className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                        >
+                          <ChevronLeft className="mr-2 h-4 w-4" />
+                          Previous
+                        </Button>
+                      )}
+                      {onNext && (
+                        <Button
+                          variant="outline"
+                          onClick={onNext}
+                          className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                        >
+                          Next
+                          <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-white">Flashcards</h2>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowFlashcards(false)}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    Back to Explanation
+                  </Button>
+                </div>
+                
+                {flashcards.length > 0 ? (
+                  <>
+                    <div className="relative h-[300px] perspective-1000">
+                      <motion.div
+                        className="w-full h-full"
+                        initial={false}
+                        animate={{ rotateY: isFlipped ? 180 : 0 }}
+                        transition={{ duration: 0.6, type: "spring" }}
+                        style={{ transformStyle: "preserve-3d" }}
+                      >
+                        <Card 
+                          className="absolute inset-0 cursor-pointer bg-gradient-to-br from-slate-700 to-slate-900 border-none shadow-lg"
+                          onClick={() => setIsFlipped(!isFlipped)}
+                        >
+                          <CardContent className="p-6 h-full flex items-center justify-center">
+                            {flashcards.length > 0 ? (
+                              <>
+                                <div className={cn(
+                                  "absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-6",
+                                  isFlipped && "invisible"
+                                )}>
+                                  <p className="text-2xl font-medium text-white mb-4">
+                                    {flashcards[currentCardIndex]?.front || "No question available"}
+                                  </p>
+                                  <p className="text-sm text-white/60">Click to flip</p>
+                                </div>
+                                <div className={cn(
+                                  "absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-6 [transform:rotateY(180deg)]",
+                                  !isFlipped && "invisible"
+                                )}>
+                                  <p className="text-2xl font-medium text-white mb-4">
+                                    {flashcards[currentCardIndex]?.back || "No answer available"}
+                                  </p>
+                                  <p className="text-sm text-white/60">Click to flip back</p>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="absolute w-full h-full flex items-center justify-center">
+                                <p className="text-xl text-white">No flashcards available for this topic.</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </div>
+
+                    <div className="flex flex-col space-y-4">
+                      <Progress value={(currentCardIndex + 1) / flashcards.length * 100} className="w-full" />
+                      <div className="flex justify-between items-center">
+                        <Button
+                          variant="outline"
+                          onClick={handlePreviousCard}
+                          disabled={currentCardIndex === 0 || flashcards.length === 0}
+                          className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                        >
+                          <ChevronLeft className="mr-2 h-4 w-4" />
+                          Previous Card
+                        </Button>
+                        <span className="text-sm text-gray-400">
+                          {flashcards.length > 0 ? `Card ${currentCardIndex + 1} of ${flashcards.length}` : "No flashcards"}
+                        </span>
+                        <Button
+                          variant="outline"
+                          onClick={handleNextCard}
+                          disabled={currentCardIndex === flashcards.length - 1 || flashcards.length === 0}
+                          className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                        >
+                          Next Card
+                          <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">No flashcards available for this topic.</p>
                   </div>
                 )}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      )
-    }
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-md bg-gray-900/95 border border-gray-700 rounded-lg backdrop-blur-lg p-6">
-        <div className="relative">
-          {/* Close Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4 text-white/60 hover:text-white"
-            onClick={onClose}
-            aria-label="Close modal"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-
-          {/* Modal Header */}
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold text-white">
-              {parsedContent.chapterName}
-            </h2>
-            <p className="text-gray-400 text-sm">
-              Unit 2, Chapter 1
-            </p>
-          </div>
-
-          {/* Tabs for Summary and Key Points */}
-          <div className="flex space-x-2 mb-4">
-            <Button
-              variant={activeTab === 'summary' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('summary')}
-              className={cn(
-                "flex-1",
-                activeTab === 'summary' ? "bg-blue-600 text-white" : "text-white/60 hover:text-white/80"
-              )}
-            >
-              Summary
-            </Button>
-            <Button
-              variant={activeTab === 'keyPoints' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('keyPoints')}
-              className={cn(
-                "flex-1",
-                activeTab === 'keyPoints' ? "bg-purple-600 text-white" : "text-white/60 hover:text-white/80"
-              )}
-            >
-              Key Points
-            </Button>
-          </div>
-
-          {/* Content based on Active Tab */}
-          <div className="space-y-4 max-h-80 overflow-y-auto">
-            {activeTab === 'summary' && chapterContent?.summary.map((point, index) => renderPointCard(point, index))}
-            {activeTab === 'keyPoints' && chapterContent?.keyPoints.map((point, index) => renderPointCard(point, index))}
-          </div>
-
-          {/* Navigation Buttons */}
-          {showNavigation && (
-            <div className="flex justify-between items-center mt-4">
-              {onPrevious && (
-                <Button
-                  variant="ghost"
-                  onClick={onPrevious}
-                  className="text-white/60 hover:text-white/90 hover:bg-white/5"
-                >
-                  Previous
-                </Button>
-              )}
-              {onNext && (
-                <Button
-                  variant="ghost"
-                  onClick={onNext}
-                  className="text-white/60 hover:text-white/90 hover:bg-white/5"
-                >
-                  Next
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
       </DialogContent>
     </Dialog>
   )
 }
+
