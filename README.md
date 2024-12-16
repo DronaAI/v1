@@ -6,14 +6,21 @@
 
 - **AI-Powered Learning Paths**: Automatically curate structured YouTube playlists for any topic or subtopic, helping learners find the best resources.
 - **Language No Bar**: Multilingual support using AI-powered natural language processing (NLP) to ensure users can learn in their preferred language.
-
 - **Dynamic Quiz Generation**: AI-generated quizzes based on learning material to test your knowledge and reinforce learning.
-
 - **Personalized Chatbot for Doubt Resolution**: Get instant answers to questions using our AI chatbot, powered by the OpenAI API.
-
 - **Progress Tracking**: Monitor your learning journey with personalized analytics to identify strengths and areas for improvement.
-
 - **Gamification**: Earn badges, build learning streaks, and see your progress on leaderboards to keep you motivated.
+
+## **Vertex AI Integration**
+
+Drona AI leverages **Google Vertex AI** to deliver advanced, AI-powered functionalities for creating dynamic and personalized learning experiences. Here's how we're using Vertex AI:
+
+- **Course and Chapter Generation**: Using **Vertex AI Gemini**, Drona AI generates customized chapters for each topic, tailoring the content structure to individual learner needs.
+- **Weakness Detection and Adaptive Learning**: With **Vertex AI RAG (Retrieval-Augmented Generation)**, we analyze quiz results to identify weak areas and generate new chapters or additional resources dynamically.
+- **Multimedia Enhancement**: **Vertex AI ImaGen** is used to create engaging course thumbnails, adding a professional and personalized touch to the platform.
+- **Performance Optimization**: Vertex AI’s scalable models ensure efficient handling of large-scale data for user performance tracking and analytics.
+
+These integrations ensure a seamless, adaptive, and impactful learning experience for users, making Drona AI a robust and cutting-edge educational platform.
 
 ## Tech Stack
 
@@ -31,7 +38,7 @@
 ### Prerequisites
 
 - **Node.js** and **npm** installed on your machine.
-- API keys for **YouTube**, **OpenAI**, **Unsplash**, **NextAuth**, and **Stripe** credentials.
+- API keys for **YouTube**, **OpenAI**, **Vertex AI**, **Unsplash**, **NextAuth**, and **Stripe** credentials.
 
 ### Installation
 
@@ -39,4 +46,3 @@
    ```bash
    git clone https://github.com/your-username/drona-ai.git
    cd drona-ai
-   ```
