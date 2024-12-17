@@ -135,6 +135,7 @@ export function CoursePage({ course, unit, chapter }: CoursePageProps) {
       {/* Modals */}
       {showQuizModal && (
         <QuizModal
+        //@ts-ignore
           chapter={chapter}
           unit={unit}
           open={showQuizModal}

@@ -1,23 +1,17 @@
 import { createVertex } from '@ai-sdk/google-vertex';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { createOpenAI } from '@ai-sdk/openai';
+// import { google } from '@ai-sdk/google';
 
-const vertexAI = createVertex({
-  project : process.env.GOOGLE_PROJECT_ID,
-  location: process.env.GOOGLE_LOCATION, 
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+
+const google = createGoogleGenerativeAI({
+  apiKey : process.env.GOOGLE_API_KEY,
 })
+const gemini= google('gemini-1.5-pro-latest' , {
+  structuredOutputs: false
+});
 
-
-const model = vertexAI("gemini-1.0-pro")
-
-const openAi = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  compatibility: 'strict',
-})
-
-
-const gemini = openAi("gpt-4o")
 
   export async function chapterImprovementAgent(quiz_results: any, chapters: any) {
     const result = await generateObject({

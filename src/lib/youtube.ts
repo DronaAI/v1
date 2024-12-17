@@ -3,11 +3,11 @@ import { YoutubeTranscript } from "youtube-transcript";
 import { strict_output } from "./gpt";
 import { createQuiz } from "./quizCreator";
 
-export async function searchYoutube(searchQuery: string) {
+export async function searchYoutube(searchQuery: string , youtube_api_key : string) {
   // hello world => hello+world
   searchQuery = encodeURIComponent(searchQuery);
   const { data } = await axios.get(
-    `https://www.googleapis.com/youtube/v3/search?key=${process.env.YOUTUBE_API_KEY}&q=${searchQuery}&videoDuration=medium&videoEmbeddable=true&type=video&maxResults=5`
+    `https://www.googleapis.com/youtube/v3/search?key=${youtube_api_key}&q=${searchQuery}&videoDuration=medium&videoEmbeddable=true&type=video&maxResults=5`
   );
   if (!data) {
     console.log("youtube fail");

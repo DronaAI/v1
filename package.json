@@ -7,10 +7,10 @@
     "dev": "next dev",
     "build": "npx prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
-    "preinstall": "npx only-allow pnpm"
+    "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.0.10",
     "@ai-sdk/google-vertex": "^1.0.4",
     "@ai-sdk/openai": "^1.0.1",
     "@hookform/resolvers": "^3.2.0",

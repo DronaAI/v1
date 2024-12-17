@@ -3,25 +3,15 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { createVertex } from '@ai-sdk/google-vertex';
 
-const vertexAI = createVertex({
-  project : process.env.GOOGLE_PROJECT_ID,
-  location: process.env.GOOGLE_LOCATION, 
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+
+const google = createGoogleGenerativeAI({
+  apiKey : process.env.GOOGLE_API_KEY,
 })
-
-
-const model = vertexAI("gemini-1.5-flash", {
-  useSearchGrounding: true,
-  structuredOutputs: false
-})
-
-
-const vertex = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  compatibility: 'strict'
-})
-
-
-const gemini = vertex("gpt-4o")
+const gemini= google('gemini-1.5-pro-latest' , {
+  structuredOutputs: false,
+  useSearchGrounding: true
+});
 // Define the schema exactly as in the given example structure.
 const schema = z.object({
   summary: z.array(

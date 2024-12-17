@@ -1,31 +1,20 @@
 import { createVertex } from '@ai-sdk/google-vertex';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { createOpenAI } from '@ai-sdk/openai';
 
 
-const vertexAI = createVertex({
-  project : process.env.GOOGLE_PROJECT_ID,
-  location: process.env.GOOGLE_LOCATION, 
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+
+const google = createGoogleGenerativeAI({
+  apiKey : process.env.GOOGLE_API_KEY,
 })
-
-
-const model = vertexAI("gemini-1.5-flash-002",{
+const gemini= google('gemini-1.5-pro-latest' , {
   structuredOutputs: false
-})
-
-const openAi = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  compatibility: 'strict',
-})
-
-
-const gemini = openAi("gpt-4o")
-
+});
 
 export async  function createThumbnail(topic: string) {
   const result = await generateObject({
-    model : model, 
+    model : gemini, 
     schema : z.object({
       image_search_term: z.string()
     }),

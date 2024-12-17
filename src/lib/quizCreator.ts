@@ -1,28 +1,15 @@
 import { createVertex } from '@ai-sdk/google-vertex';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 
-
-
-const vertexAI = createVertex({
-  project : process.env.GOOGLE_PROJECT_ID,
-  location: process.env.GOOGLE_LOCATION, 
+const google = createGoogleGenerativeAI({
+  apiKey : process.env.GOOGLE_API_KEY,
 })
-
-
-const model = vertexAI("gemini-1.5-flash-002",{
-    structuredOutputs: false
-})
-
-
-const openAi = createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    compatibility: 'strict',
-  })
-  
-  
-  const gemini = openAi("gpt-4o")
+const gemini= google('gemini-1.5-pro-latest' , {
+  structuredOutputs: false,
+  useSearchGrounding: true
+});
 
 
 

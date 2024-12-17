@@ -11,7 +11,12 @@ import { Prisma } from "@prisma/client";
 
 const bodyParser = z.object({
   chapterId: z.string(),
-});
+})
+
+const yt_api_key = {
+  key1: process.env.YOUTUBE_API_KEY_ONE,
+  key2: process.env.YOUTUBE_API_KEY_TWO,
+}
 
 export async function POST(req: Request) {
   try {
@@ -29,7 +34,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const videoId = await searchYoutube(chapter.youtubeSearchQuery);
+    const yt_key = Math.random() > 0.5 ? yt_api_key.key1 : yt_api_key.key2;
+
+    //@ts-ignore
+    const videoId = await searchYoutube(chapter.youtubeSearchQuery , yt_key);
     let transcript = await getTranscript(videoId);
 
     // Limit transcript
