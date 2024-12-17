@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { generateExplanations } from "@/lib/ContentGenerationAgent";
+import { Key } from "lucide-react";
 
 // Validation schemas
 const requestSchema = z.object({
@@ -18,7 +19,13 @@ const updatedChapterSchema = z.object({
   youtube_search_query: z.string(),
 });
 
+const yt_api_key = {
+  key1: process.env.YOUTUBE_API_KEY_THREE,
+  key2: process.env.YOUTUBE_API_KEY_FOUR,
+}
+
 export async function POST(req: Request) {
+
   try {
     console.log("Starting POST request for updating unit chapters...");
 
@@ -120,11 +127,20 @@ export async function POST(req: Request) {
       throw new Error("Failed to delete old chapters and associated data.");
     }
 
+    const yt_api_keys = [yt_api_key.key1, yt_api_key.key2];
+    let keyIndex = 0;
+
+
     // Process and create new chapters
     for (const chapterData of validatedChapters) {
       console.log(`Processing chapter: ${chapterData.title}`);
+      
+    keyIndex = (keyIndex + 1) % yt_api_keys.length;
+    const currentApiKey = yt_api_keys[keyIndex];
 
-      const videoId = await searchYoutube(chapterData.youtube_search_query);
+
+      //@ts-ignore
+      const videoId = await searchYoutube(chapterData.youtube_search_query,currentApiKey);
       const transcript = await getTranscript(videoId);
       const truncatedTranscript = transcript.split(" ").slice(0, 500).join(" ");
       const explanations = await generateExplanations(chapterData.title, truncatedTranscript);

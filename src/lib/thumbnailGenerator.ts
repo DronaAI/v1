@@ -6,7 +6,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 const vertexAi = createOpenAI({
   // custom settings, e.g.
-  apiKey  : process.env.OPENAI_API_KEY,
+  apiKey  : process.env.OPENAI_API_KEY_TWO,
   compatibility: 'strict', // strict mode, enable when using the OpenAI API
 });
 

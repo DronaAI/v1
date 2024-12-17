@@ -3,7 +3,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 const vertexAi = createOpenAI({
   // custom settings, e.g.
-  apiKey  : process.env.OPENAI_API_KEY,
+  apiKey  : process.env.OPENAI_API_KEY_ONE,
   compatibility: 'strict', // strict mode, enable when using the OpenAI API
 });
 
