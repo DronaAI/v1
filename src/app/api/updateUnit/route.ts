@@ -7,7 +7,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { generateExplanations } from "@/lib/ContentGenerationAgent";
-import { Key } from "lucide-react";
 
 // Validation schemas
 const requestSchema = z.object({
@@ -19,20 +18,16 @@ const updatedChapterSchema = z.object({
   youtube_search_query: z.string(),
 });
 
-const yt_api_key = {
-  key1: process.env.YOUTUBE_API_KEY_THREE,
-  key2: process.env.YOUTUBE_API_KEY_FOUR,
-}
+const ytApiKeys = [
+  process.env.YOUTUBE_API_KEY_THREE,
+  process.env.YOUTUBE_API_KEY_FOUR,
+].filter(Boolean) as string[]; // Ensure keys are not undefined
 
 export async function POST(req: Request) {
-
   try {
-    console.log("Starting POST request for updating unit chapters...");
-
     // Validate session
     const session = await getAuthSession();
     if (!session?.user) {
-      console.error("Unauthorized access - session not found.");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -40,39 +35,32 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { unitId } = requestSchema.parse(body);
 
-    console.log("Validated unitId:", unitId);
-
-    // Fetch the unit and its associated data
-    const unit = await prisma.unit.findUnique({
-      where: { id: unitId },
-      include: { chapters: true },
-    });
+    // Fetch unit and quiz result in parallel
+    const [unit, unitQuizResult] = await Promise.all([
+      prisma.unit.findUnique({
+        where: { id: unitId },
+        include: { chapters: true },
+      }),
+      prisma.unitQuizResult.findFirst({
+        where: {
+          unitId,
+          userId: session.user.id,
+        },
+        include: {
+          chapterQuizResults: {
+            include: { chapter: true },
+          },
+        },
+      }),
+    ]);
 
     if (!unit) {
-      console.error("Unit not found:", unitId);
       return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
-    console.log("Fetched unit:", unit);
-
-    const unitQuizResult = await prisma.unitQuizResult.findFirst({
-      where: {
-        unitId: unit.id,
-        userId: session.user.id,
-      },
-      include: {
-        chapterQuizResults: {
-          include: { chapter: true },
-        },
-      },
-    });
-
     if (!unitQuizResult) {
-      console.error("No quiz results found for unit:", unitId);
       return NextResponse.json({ error: "No quiz results found" }, { status: 404 });
     }
-
-    console.log("Fetched unit quiz results:", unitQuizResult);
 
     // Aggregate quiz results
     const quizResults = {
@@ -86,65 +74,46 @@ export async function POST(req: Request) {
       })),
     };
 
-    console.log("Aggregated quiz results:", quizResults);
-
     // Generate updated chapters
     const updatedChapters = await chapterImprovementAgent(quizResults, unit.chapters);
     const validatedChapters = updatedChapters.map((chapter) =>
       updatedChapterSchema.parse(chapter)
     );
 
-    console.log("Validated chapters:", validatedChapters);
-
-    // Delete old chapters and their associated data
+    // Delete old chapters and related data
+    // Ideally, set onDelete: Cascade for ChapterContent and Question in schema to only delete chapters.
+    // For now, we do a transaction:
     const chapterIds = unit.chapters.map((chapter) => chapter.id);
+    await prisma.$transaction([
+      prisma.chapterContent.deleteMany({
+        where: { chapterId: { in: chapterIds } },
+      }),
+      prisma.question.deleteMany({
+        where: { chapterId: { in: chapterIds } },
+      }),
+      prisma.chapter.deleteMany({
+        where: { id: { in: chapterIds } },
+      }),
+    ]);
 
-    try {
-      console.log("Deleting associated ChapterContent records...");
-      await prisma.chapterContent.deleteMany({
-        where: {
-          chapterId: { in: chapterIds },
-        },
+    // Process new chapters in parallel
+    const chapterPromises = validatedChapters.map(async (chapterData, index) => {
+      const currentApiKey = ytApiKeys[index % ytApiKeys.length]; 
+      const [videoId, transcript] = await Promise.all([
+        searchYoutube(chapterData.youtube_search_query, currentApiKey),
+        // We'll fetch transcript after we get the videoId
+      ]).then(async ([videoId]) => {
+        const transcript = await getTranscript(videoId);
+        return [videoId, transcript] as const;
       });
 
-      console.log("Deleting associated questions...");
-      await prisma.question.deleteMany({
-        where: {
-          chapterId: { in: chapterIds },
-        },
-      });
-
-      console.log("Deleting old chapters...");
-      await prisma.chapter.deleteMany({
-        where: {
-          id: { in: chapterIds },
-        },
-      });
-
-      console.log("Deleted old chapters and their related data.");
-    } catch (deleteError) {
-      console.error("Error deleting old chapters and related data:", deleteError);
-      throw new Error("Failed to delete old chapters and associated data.");
-    }
-
-    const yt_api_keys = [yt_api_key.key1, yt_api_key.key2];
-    let keyIndex = 0;
-
-
-    // Process and create new chapters
-    for (const chapterData of validatedChapters) {
-      console.log(`Processing chapter: ${chapterData.title}`);
-      
-    keyIndex = (keyIndex + 1) % yt_api_keys.length;
-    const currentApiKey = yt_api_keys[keyIndex];
-
-
-      //@ts-ignore
-      const videoId = await searchYoutube(chapterData.youtube_search_query,currentApiKey);
-      const transcript = await getTranscript(videoId);
       const truncatedTranscript = transcript.split(" ").slice(0, 500).join(" ");
-      const explanations = await generateExplanations(chapterData.title, truncatedTranscript);
-      const questions = await getQuestionsFromTranscript(truncatedTranscript, chapterData.title);
+
+      // Run generation tasks in parallel
+      const [explanations, questions] = await Promise.all([
+        generateExplanations(chapterData.title, truncatedTranscript),
+        getQuestionsFromTranscript(truncatedTranscript, chapterData.title),
+      ]);
 
       // Create the Chapter
       const newChapter = await prisma.chapter.create({
@@ -155,8 +124,6 @@ export async function POST(req: Request) {
           videoId,
         },
       });
-
-      console.log(`Created chapter: ${newChapter.name}`);
 
       // Create questions for the Chapter
       await prisma.question.createMany({
@@ -172,8 +139,6 @@ export async function POST(req: Request) {
         })),
       });
 
-      console.log(`Inserted questions for chapter: ${newChapter.name}`);
-
       // Create ChapterContent
       await prisma.chapterContent.create({
         data: {
@@ -187,8 +152,10 @@ export async function POST(req: Request) {
         },
       });
 
-      console.log(`Created content for chapter: ${newChapter.name}`);
-    }
+      return newChapter;
+    });
+
+    await Promise.all(chapterPromises);
 
     // Fetch the updated unit with its chapters
     const updatedUnit = await prisma.unit.findUnique({
@@ -196,14 +163,11 @@ export async function POST(req: Request) {
       include: { chapters: { orderBy: { name: "asc" } } },
     });
 
-    console.log("Updated unit:", updatedUnit);
-
     return NextResponse.json(
       { message: "Chapters updated successfully", updatedUnit },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error updating chapters:", error);
     return NextResponse.json(
       { error: "Failed to update chapters", details: String(error) },
       { status: 500 }
